@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trichyguard</title>
+<meta name="description" content="A private, on-device companion for interrupting hair-pulling urges (trichotillomania / BFRB) and tracking recovery.">
+<meta name="theme-color" content="#141221">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+:root{
+  --bg:#0f0e17; --bg2:#191728; --card:#211f34; --card2:#2a273f;
+  --text:#f2f0fa; --sub:#a9a5c4; --accent:#8b7cf6; --accent2:#c084fc;
+  --good:#4ade80; --bad:#f87171; --warn:#fbbf24;
+  --radius:20px;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#f6f5fb; --bg2:#ffffff; --card:#ffffff; --card2:#f0edfb;
+    --text:#1c1a2b; --sub:#615c7a; --accent:#7c5cf0; --accent2:#a855f7;
+  }
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0; height:100%;}
+body{
+  background:linear-gradient(180deg,var(--bg),var(--bg2) 60%);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  min-height:100vh;
+  padding-bottom:88px;
+  overflow-x:hidden;
+}
+.app{max-width:520px; margin:0 auto; padding:20px 18px 8px;}
+header.top{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
+header.top .brand{display:flex; align-items:center; gap:10px; font-weight:700; font-size:1.15rem;}
+header.top .brand .dot{width:12px;height:12px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:0 0 14px var(--accent);}
+.streak-card{
+  background:linear-gradient(160deg,var(--card),var(--card2));
+  border-radius:calc(var(--radius) + 6px);
+  padding:28px 24px;
+  text-align:center;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);
+  position:relative;
+  overflow:hidden;
+}
+.streak-card .label{color:var(--sub); font-size:.82rem; letter-spacing:.08em; text-transform:uppercase;}
+.streak-card .num{font-size:3.4rem; font-weight:800; line-height:1.05; margin:6px 0 2px; background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+.streak-card .unit{color:var(--sub); font-size:.95rem;}
+.streak-card .best{margin-top:14px; font-size:.8rem; color:var(--sub);}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px;}
+.stat-mini{background:var(--card); border-radius:16px; padding:14px; text-align:center;}
+.stat-mini .n{font-size:1.4rem; font-weight:700;}
+.stat-mini .l{font-size:.72rem; color:var(--sub); margin-top:2px;}
+.cta-row{margin-top:20px; display:flex; flex-direction:column; gap:12px;}
+button{font-family:inherit; border:none; cursor:pointer;}
+.btn-urge{
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff; font-size:1.15rem; font-weight:700;
+  padding:20px; border-radius:18px;
+  box-shadow:0 8px 24px rgba(139,124,246,.4);
+  display:flex; align-items:center; justify-content:center; gap:10px;
+}
+.btn-urge:active{transform:scale(.98);}
+.btn-secondary{
+  background:var(--card); color:var(--text); font-weight:600; font-size:.95rem;
+  padding:16px; border-radius:16px; display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.section-title{margin:26px 0 10px; font-size:.95rem; font-weight:700; color:var(--sub); letter-spacing:.02em;}
+.feed{display:flex; flex-direction:column; gap:8px;}
+.feed-item{background:var(--card); border-radius:14px; padding:12px 14px; display:flex; align-items:center; gap:10px; font-size:.88rem;}
+.feed-item .icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+.feed-item .icon.resist{background:rgba(74,222,128,.15); color:var(--good);}
+.feed-item .icon.pull{background:rgba(248,113,113,.15); color:var(--bad);}
+.feed-item .main{flex:1; min-width:0;}
+.feed-item .t{color:var(--sub); font-size:.75rem;}
+.feed-item .tag-note{color:var(--sub); font-size:.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.empty-note{color:var(--sub); font-size:.85rem; text-align:center; padding:20px 10px;}
+
+nav.tabbar{
+  position:fixed; bottom:0; left:0; right:0;
+  background:var(--card); border-top:1px solid rgba(128,128,128,.15);
+  display:flex; justify-content:space-around;
+  padding:8px max(8px,env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom));
+  z-index:40;
+}
+nav.tabbar .tab{background:none; color:var(--sub); display:flex; flex-direction:column; align-items:center; gap:3px; font-size:.68rem; font-weight:600; padding:6px 10px; border-radius:12px;}
+nav.tabbar .tab.active{color:var(--accent);}
+nav.tabbar .tab svg{width:22px;height:22px;}
+
+.screen{display:none;}
+.screen.active{display:block;}
+
+.overlay{
+  position:fixed; inset:0; background:var(--bg); z-index:100;
+  display:none; flex-direction:column;
+  animation:fadein .2s ease;
+}
+.overlay.active{display:flex;}
+@keyframes fadein{from{opacity:0} to{opacity:1}}
+.overlay-body{flex:1; overflow-y:auto; padding:22px 20px 40px; max-width:520px; width:100%; margin:0 auto;}
+.overlay-close{position:absolute; top:16px; right:16px; background:var(--card); width:38px;height:38px;border-radius:50%; display:flex;align-items:center;justify-content:center; font-size:1.2rem; color:var(--sub); z-index:5;}
+
+.step-label{color:var(--sub); font-size:.8rem; text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px;}
+.step-title{font-size:1.5rem; font-weight:800; margin:0 0 18px; line-height:1.25;}
+.chip-row{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;}
+.chip{background:var(--card); color:var(--text); padding:10px 16px; border-radius:100px; font-size:.9rem; font-weight:600;}
+.chip.selected{background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff;}
+textarea, input[type=text], input[type=number]{
+  width:100%; background:var(--card); color:var(--text); border:1px solid rgba(128,128,128,.2);
+  border-radius:14px; padding:14px; font-size:.95rem; font-family:inherit; resize:vertical;
+}
+.primary-btn{
+  width:100%; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff;
+  font-weight:700; font-size:1.05rem; padding:17px; border-radius:16px; margin-top:20px;
+}
+.ghost-btn{width:100%; background:transparent; color:var(--sub); font-weight:600; font-size:.9rem; padding:14px; margin-top:8px; text-align:center;}
+
+.breath-wrap{display:flex; flex-direction:column; align-items:center; padding:20px 0 10px;}
+.breath-circle{
+  width:200px; height:200px; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, var(--accent2), var(--accent));
+  display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:1.1rem;
+  box-shadow:0 0 60px rgba(139,124,246,.5);
+  transition:transform 4s ease-in-out;
+}
+.breath-timer{font-size:2.4rem; font-weight:800; margin:22px 0 4px;}
+.breath-sub{color:var(--sub); font-size:.9rem;}
+.suggestion-card{background:var(--card); border-radius:16px; padding:16px 18px; margin-top:22px; font-size:.92rem;}
+.suggestion-card .l{color:var(--accent2); font-weight:700; font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;}
+
+.result-emoji{font-size:3.4rem; text-align:center; margin-bottom:6px;}
+.result-title{font-size:1.5rem; font-weight:800; text-align:center; margin-bottom:8px;}
+.result-sub{color:var(--sub); text-align:center; font-size:.92rem; margin-bottom:24px;}
+.result-choice{display:flex; flex-direction:column; gap:12px;}
+
+canvas{width:100%; display:block;}
+.chart-card{background:var(--card); border-radius:16px; padding:16px; margin-bottom:14px;}
+.chart-card .title{font-weight:700; font-size:.9rem; margin-bottom:10px;}
+.legend{display:flex; gap:16px; font-size:.78rem; color:var(--sub); margin-top:8px;}
+.legend span{display:inline-flex; align-items:center; gap:6px;}
+.legend i{width:10px;height:10px;border-radius:3px; display:inline-block;}
+
+.journal-entry{background:var(--card); border-radius:14px; padding:14px; margin-bottom:10px;}
+.journal-entry .t{color:var(--sub); font-size:.75rem; margin-bottom:4px;}
+.journal-entry .body{font-size:.92rem; white-space:pre-wrap;}
+.fab{
+  position:fixed; bottom:96px; right:max(20px,env(safe-area-inset-right)); z-index:30;
+  width:56px;height:56px;border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff; font-size:1.6rem; display:flex; align-items:center; justify-content:center;
+  box-shadow:0 8px 20px rgba(139,124,246,.4);
+}
+
+.setting-row{display:flex; align-items:center; justify-content:space-between; background:var(--card); border-radius:14px; padding:14px 16px; margin-bottom:10px;}
+.setting-row .l{font-size:.92rem; font-weight:600;}
+.setting-row .d{font-size:.76rem; color:var(--sub); margin-top:2px;}
+.switch{position:relative; width:46px; height:26px; background:rgba(128,128,128,.3); border-radius:100px; flex-shrink:0;}
+.switch.on{background:var(--accent);}
+.switch .knob{position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:left .15s ease;}
+.switch.on .knob{left:23px;}
+.danger-btn{width:100%; background:rgba(248,113,113,.12); color:var(--bad); font-weight:700; padding:14px; border-radius:14px; margin-top:6px; font-size:.9rem;}
+.about-box{background:var(--card); border-radius:16px; padding:18px; font-size:.85rem; color:var(--sub); line-height:1.6; margin-top:16px;}
+.toast{
+  position:fixed; left:50%; bottom:100px; transform:translateX(-50%);
+  background:var(--card2); color:var(--text); padding:12px 20px; border-radius:100px; font-size:.88rem; font-weight:600;
+  box-shadow:0 8px 24px rgba(0,0,0,.3); z-index:200; opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease;
+}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(-8px);}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <div class="brand"><span class="dot"></span> Trichyguard</div>
+  </header>
+
+  <section id="screen-home" class="screen active">
+    <div class="streak-card">
+      <div class="label">Current streak</div>
+      <div class="num" id="streakNum">0</div>
+      <div class="unit" id="streakUnit">hours pull-free</div>
+      <div class="best" id="bestStreak"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="stat-mini"><div class="n" id="statResisted">0</div><div class="l">urges resisted</div></div>
+      <div class="stat-mini"><div class="n" id="statTotal">0</div><div class="l">total logged</div></div>
+    </div>
+
+    <div class="cta-row">
+      <button class="btn-urge" onclick="startIntervention()">✋ I feel an urge right now</button>
+      <button class="btn-secondary" onclick="openQuickPull()">It already happened — log it</button>
+    </div>
+
+    <div class="section-title">Recent activity</div>
+    <div class="feed" id="feed"></div>
+  </section>
+
+  <section id="screen-stats" class="screen">
+    <h2 style="margin:6px 0 16px;">Your patterns</h2>
+    <div class="chart-card">
+      <div class="title">Last 14 days</div>
+      <canvas id="chartDays" height="140"></canvas>
+      <div class="legend"><span><i style="background:var(--good)"></i>resisted</span><span><i style="background:var(--bad)"></i>pulled</span></div>
+    </div>
+    <div class="chart-card">
+      <div class="title">Time of day</div>
+      <canvas id="chartHours" height="120"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="title">Common triggers</div>
+      <canvas id="chartTriggers" height="140"></canvas>
+    </div>
+  </section>
+
+  <section id="screen-journal" class="screen">
+    <h2 style="margin:6px 0 16px;">Journal</h2>
+    <div id="journalList"></div>
+    <div class="empty-note" id="journalEmpty">No entries yet. Tap + to write about a trigger, a win, or how you're feeling.</div>
+  </section>
+
+  <section id="screen-settings" class="screen">
+    <h2 style="margin:6px 0 16px;">Settings</h2>
+    <div class="setting-row">
+      <div><div class="l">Check-in reminders</div><div class="d">A gentle nudge while the app is open</div></div>
+      <div class="switch" id="switchReminders" onclick="toggleReminders()"><div class="knob"></div></div>
+    </div>
+    <div class="setting-row" id="reminderIntervalRow" style="display:none">
+      <div><div class="l">Remind me every</div><div class="d" id="reminderIntervalLabel">2 hours</div></div>
+      <input type="number" id="reminderIntervalInput" min="1" max="12" value="2" style="width:70px; text-align:center;" onchange="setReminderInterval(this.value)">
+    </div>
+    <div class="setting-row" onclick="exportData()">
+      <div><div class="l">Export my data</div><div class="d">Download a private backup (.json)</div></div>
+      <div style="font-size:1.3rem;">⬇️</div>
+    </div>
+    <div class="setting-row" onclick="document.getElementById('importFile').click()">
+      <div><div class="l">Import backup</div><div class="d">Restore from a .json file</div></div>
+      <div style="font-size:1.3rem;">⬆️</div>
+    </div>
+    <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
+    <button class="danger-btn" onclick="resetData()">Erase all my data</button>
+
+    <div class="about-box">
+      Trichyguard stores everything only on this device, in your browser. Nothing is uploaded, tracked, or shared —
+      not even to us. If you ever want a clean slate, "Erase all my data" is permanent and immediate.
+      <br><br>
+      Trichyguard is a self-help companion for hair-pulling (trichotillomania) and related body-focused repetitive
+      behaviors. It is not a substitute for therapy — habit reversal training with a licensed therapist
+      (often called HRT or ComB) is the most evidence-backed treatment. The TLC Foundation for BFRBs is a good
+      place to find one if you're looking.
+    </div>
+  </section>
+</div>
+
+<nav class="tabbar">
+  <button class="tab active" data-tab="home" onclick="switchTab('home')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
+    Home
+  </button>
+  <button class="tab" data-tab="stats" onclick="switchTab('stats')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
+    Stats
+  </button>
+  <button class="tab" data-tab="journal" onclick="switchTab('journal')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h13a2 2 0 0 1 2 2v14l-3-2-3 2-3-2-3 2-3-2-3 2V6a2 2 0 0 1 2-2z"/></svg>
+    Journal
+  </button>
+  <button class="tab" data-tab="settings" onclick="switchTab('settings')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Settings
+  </button>
+</nav>
+
+<button class="fab" id="journalFab" style="display:none" onclick="openJournalEntry()">+</button>
+
+<!-- Intervention overlay -->
+<div class="overlay" id="interventionOverlay">
+  <button class="overlay-close" onclick="closeIntervention()">✕</button>
+  <div class="overlay-body">
+
+    <div id="ivStepTrigger">
+      <div class="step-label">Step 1 of 3</div>
+      <div class="step-title">Before anything else — what's happening right now?</div>
+      <div class="chip-row" id="triggerChips"></div>
+      <textarea id="triggerNote" rows="3" placeholder="Anything else worth noting? (optional)"></textarea>
+      <button class="primary-btn" onclick="goToBreathing()">Continue</button>
+    </div>
+
+    <div id="ivStepBreathe" style="display:none">
+      <div class="step-label">Step 2 of 3</div>
+      <div class="step-title">Ride out the urge. It always passes.</div>
+      <div class="breath-wrap">
+        <div class="breath-circle" id="breathCircle">Breathe in</div>
+        <div class="breath-timer" id="breathTimer">3:00</div>
+        <div class="breath-sub">Keep your hands busy and away from your hair</div>
+      </div>
+      <div class="suggestion-card">
+        <div class="l">Try this instead</div>
+        <div id="suggestionText">Clench both fists tight for 10 seconds, then release slowly. Repeat.</div>
+      </div>
+      <button class="primary-btn" onclick="finishBreathing()" id="skipBreathBtn">I'm ready — how did it go?</button>
+    </div>
+
+    <div id="ivStepResult" style="display:none">
+      <div class="result-emoji">🌱</div>
+      <div class="result-title">Did you resist the urge?</div>
+      <div class="result-sub">Be honest with yourself — every data point helps, whichever way it went.</div>
+      <div class="result-choice">
+        <button class="btn-urge" onclick="logOutcome(true)">✅ Yes, I resisted</button>
+        <button class="btn-secondary" onclick="logOutcome(false)">It happened — I pulled</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Quick pull-log overlay -->
+<div class="overlay" id="quickPullOverlay">
+  <button class="overlay-close" onclick="closeQuickPull()">✕</button>
+  <div class="overlay-body">
+    <div class="step-label">Log a pull</div>
+    <div class="step-title">No judgment here. What was going on?</div>
+    <div class="chip-row" id="quickTriggerChips"></div>
+    <textarea id="quickNote" rows="3" placeholder="Anything else worth noting? (optional)"></textarea>
+    <button class="primary-btn" onclick="submitQuickPull()">Log it</button>
+    <button class="ghost-btn" onclick="closeQuickPull()">Cancel</button>
+  </div>
+</div>
+
+<!-- Journal entry overlay -->
+<div class="overlay" id="journalOverlay">
+  <button class="overlay-close" onclick="closeJournalEntry()">✕</button>
+  <div class="overlay-body">
+    <div class="step-label">New journal entry</div>
+    <textarea id="journalText" rows="10" placeholder="What's on your mind?"></textarea>
+    <button class="primary-btn" onclick="submitJournalEntry()">Save entry</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORE_KEY='trichyguard_v1';
+const TRIGGERS=['Stress','Boredom','Focus/reading','Phone or screen','Tired','Anxious','Alone','Other'];
+
+function loadData(){
+  try{
+    const raw=localStorage.getItem(STORE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return {events:[], journal:[], settings:{remindersOn:false, reminderHours:2, installedAt:Date.now()}, lastReminderAt:0};
+}
+function saveData(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+
+let state=loadData();
+if(!state.settings) state.settings={remindersOn:false, reminderHours:2, installedAt:Date.now()};
+if(!state.journal) state.journal=[];
+if(!state.settings.installedAt) state.settings.installedAt=Date.now();
+
+let pendingTrigger=null, pendingNote='';
+let breathTimerHandle=null, breathSecondsLeft=180;
+
+function switchTab(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.querySelector('.tab[data-tab="'+name+'"]').classList.add('active');
+  document.getElementById('journalFab').style.display = (name==='journal') ? 'flex' : 'none';
+  if(name==='stats') renderCharts();
+  if(name==='journal') renderJournal();
+}
+
+function fmtRelative(ts){
+  const diff=Date.now()-ts;
+  const m=Math.floor(diff/60000);
+  if(m<1) return 'just now';
+  if(m<60) return m+'m ago';
+  const h=Math.floor(m/60);
+  if(h<24) return h+'h ago';
+  const d=Math.floor(h/24);
+  return d+'d ago';
+}
+
+function lastPullTs(){
+  const pulls=state.events.filter(e=>e.type==='pulled');
+  if(pulls.length===0) return state.settings.installedAt;
+  return pulls[pulls.length-1].ts;
+}
+function longestStreakHours(){
+  const pulls=state.events.filter(e=>e.type==='pulled').map(e=>e.ts).sort((a,b)=>a-b);
+  let points=[state.settings.installedAt, ...pulls, Date.now()];
+  let best=0;
+  for(let i=1;i<points.length;i++){
+    best=Math.max(best, (points[i]-points[i-1])/3600000);
+  }
+  return Math.round(best);
+}
+
+function renderHome(){
+  const since=lastPullTs();
+  const hours=(Date.now()-since)/3600000;
+  const days=hours/24;
+  if(days>=2){
+    document.getElementById('streakNum').textContent=Math.floor(days);
+    document.getElementById('streakUnit').textContent='days pull-free';
+  }else{
+    document.getElementById('streakNum').textContent=Math.floor(hours);
+    document.getElementById('streakUnit').textContent='hours pull-free';
+  }
+  const best=longestStreakHours();
+  document.getElementById('bestStreak').textContent = best>0 ? ('Best streak: '+(best>=48?Math.floor(best/24)+' days':best+' hours')) : '';
+
+  const resisted=state.events.filter(e=>e.type==='resisted').length;
+  document.getElementById('statResisted').textContent=resisted;
+  document.getElementById('statTotal').textContent=state.events.length;
+
+  const feed=document.getElementById('feed');
+  const recent=[...state.events].sort((a,b)=>b.ts-a.ts).slice(0,12);
+  if(recent.length===0){
+    feed.innerHTML='<div class="empty-note">Nothing logged yet. When an urge hits, tap the button above.</div>';
+  }else{
+    feed.innerHTML=recent.map(e=>{
+      const isResist = e.type==='resisted';
+      const icon = isResist ? '✅' : '·';
+      const label = isResist ? 'Resisted an urge' : 'Logged a pull';
+      const cls = isResist ? 'resist':'pull';
+      const tag = e.trigger ? e.trigger : '';
+      return `<div class="feed-item"><div class="icon ${cls}">${icon}</div><div class="main"><div>${label}</div><div class="t">${fmtRelative(e.ts)}</div></div><div class="tag-note">${tag}</div></div>`;
+    }).join('');
+  }
+}
+
+function buildChips(container, onSelect){
+  container.innerHTML='';
+  TRIGGERS.forEach(t=>{
+    const c=document.createElement('button');
+    c.className='chip'; c.textContent=t;
+    c.onclick=()=>{
+      container.querySelectorAll('.chip').forEach(x=>x.classList.remove('selected'));
+      c.classList.add('selected');
+      onSelect(t);
+    };
+    container.appendChild(c);
+  });
+}
+
+function startIntervention(){
+  pendingTrigger=null; pendingNote='';
+  document.getElementById('ivStepTrigger').style.display='block';
+  document.getElementById('ivStepBreathe').style.display='none';
+  document.getElementById('ivStepResult').style.display='none';
+  document.getElementById('triggerNote').value='';
+  buildChips(document.getElementById('triggerChips'), t=>pendingTrigger=t);
+  document.getElementById('interventionOverlay').classList.add('active');
+}
+function closeIntervention(){
+  stopBreathing();
+  document.getElementById('interventionOverlay').classList.remove('active');
+}
+const SUGGESTIONS=[
+  "Clench both fists tight for 10 seconds, then release slowly. Repeat.",
+  "Hold something cold — an ice cube or a cold glass — and focus on the sensation.",
+  "Put lotion or gloves on your fingertips so pulling feels different, less automatic.",
+  "Grab a fidget object, stress ball, or piece of putty and squeeze it instead.",
+  "Sit on your hands for a slow count of 30, then let them rest in your lap.",
+  "Trace slow circles on your palm with your thumb — keep your fingers occupied.",
+  "Pick up a textured object nearby and just hold and feel it for a minute."
+];
+function goToBreathing(){
+  document.getElementById('ivStepTrigger').style.display='none';
+  document.getElementById('ivStepBreathe').style.display='block';
+  document.getElementById('suggestionText').textContent = SUGGESTIONS[Math.floor(Math.random()*SUGGESTIONS.length)];
+  breathSecondsLeft=180;
+  runBreathCycle();
+  updateBreathTimer();
+  breathTimerHandle=setInterval(()=>{
+    breathSecondsLeft--;
+    updateBreathTimer();
+    if(breathSecondsLeft<=0){ stopBreathing(); }
+  },1000);
+}
+function updateBreathTimer(){
+  const m=Math.floor(breathSecondsLeft/60), s=breathSecondsLeft%60;
+  document.getElementById('breathTimer').textContent = m+':'+(s<10?'0':'')+s;
+}
+let breathPhaseHandle=null;
+function runBreathCycle(){
+  const circle=document.getElementById('breathCircle');
+  let phase=0;
+  const phases=[
+    {label:'Breathe in', scale:'scale(1.25)', dur:4000},
+    {label:'Hold', scale:'scale(1.25)', dur:2000},
+    {label:'Breathe out', scale:'scale(0.85)', dur:5000},
+  ];
+  function step(){
+    const p=phases[phase%phases.length];
+    circle.textContent=p.label;
+    circle.style.transition='transform '+(p.dur/1000)+'s ease-in-out';
+    circle.style.transform=p.scale;
+    phase++;
+    breathPhaseHandle=setTimeout(step, p.dur);
+  }
+  step();
+}
+function stopBreathing(){
+  if(breathTimerHandle) clearInterval(breathTimerHandle);
+  if(breathPhaseHandle) clearTimeout(breathPhaseHandle);
+  breathTimerHandle=null; breathPhaseHandle=null;
+}
+function finishBreathing(){
+  stopBreathing();
+  document.getElementById('ivStepBreathe').style.display='none';
+  document.getElementById('ivStepResult').style.display='block';
+}
+function logOutcome(resisted){
+  pendingNote=document.getElementById('triggerNote').value.trim();
+  state.events.push({ts:Date.now(), type: resisted?'resisted':'pulled', trigger:pendingTrigger, note:pendingNote});
+  saveData();
+  closeIntervention();
+  document.getElementById('interventionOverlay').classList.remove('active');
+  renderHome();
+  showToast(resisted ? "Nice. That's one urge you didn't let win." : "Logged. Tomorrow's a fresh shot at it.");
+}
+
+function openQuickPull(){
+  document.getElementById('quickNote').value='';
+  buildChips(document.getElementById('quickTriggerChips'), t=>pendingTrigger=t);
+  pendingTrigger=null;
+  document.getElementById('quickPullOverlay').classList.add('active');
+}
+function closeQuickPull(){ document.getElementById('quickPullOverlay').classList.remove('active'); }
+function submitQuickPull(){
+  const note=document.getElementById('quickNote').value.trim();
+  state.events.push({ts:Date.now(), type:'pulled', trigger:pendingTrigger, note});
+  saveData();
+  closeQuickPull();
+  renderHome();
+  showToast('Logged. Thanks for being honest with yourself.');
+}
+
+function renderJournal(){
+  const list=document.getElementById('journalList');
+  const empty=document.getElementById('journalEmpty');
+  const entries=[...state.journal].sort((a,b)=>b.ts-a.ts);
+  if(entries.length===0){ list.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  list.innerHTML=entries.map(e=>`<div class="journal-entry"><div class="t">${new Date(e.ts).toLocaleString()}</div><div class="body">${escapeHtml(e.text)}</div></div>`).join('');
+}
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function openJournalEntry(){ document.getElementById('journalText').value=''; document.getElementById('journalOverlay').classList.add('active'); }
+function closeJournalEntry(){ document.getElementById('journalOverlay').classList.remove('active'); }
+function submitJournalEntry(){
+  const text=document.getElementById('journalText').value.trim();
+  if(!text) return closeJournalEntry();
+  state.journal.push({ts:Date.now(), text});
+  saveData();
+  closeJournalEntry();
+  renderJournal();
+}
+
+function renderCharts(){
+  renderDaysChart();
+  renderHoursChart();
+  renderTriggersChart();
+}
+function setupCanvas(cv){
+  const dpr=window.devicePixelRatio||1;
+  const cssW=cv.clientWidth || cv.parentElement.clientWidth;
+  const cssH=parseInt(cv.getAttribute('height'))||120;
+  cv.width=cssW*dpr; cv.height=cssH*dpr;
+  const ctx=cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {ctx, w:cssW, h:cssH};
+}
+function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+function renderDaysChart(){
+  const cv=document.getElementById('chartDays');
+  const {ctx,w,h}=setupCanvas(cv);
+  ctx.clearRect(0,0,w,h);
+  const days=14;
+  const now=new Date(); now.setHours(0,0,0,0);
+  const buckets=[];
+  for(let i=days-1;i>=0;i--){
+    const start=now.getTime()-i*86400000;
+    const end=start+86400000;
+    const resisted=state.events.filter(e=>e.ts>=start&&e.ts<end&&e.type==='resisted').length;
+    const pulled=state.events.filter(e=>e.ts>=start&&e.ts<end&&e.type==='pulled').length;
+    buckets.push({resisted,pulled,start});
+  }
+  const max=Math.max(1, ...buckets.map(b=>b.resisted+b.pulled));
+  const bw=w/days;
+  const good=cssVar('--good')||'#4ade80', bad=cssVar('--bad')||'#f87171', sub=cssVar('--sub')||'#999';
+  buckets.forEach((b,i)=>{
+    const x=i*bw+bw*0.2, barW=bw*0.6;
+    const rH=(b.resisted/max)*(h-24), pH=(b.pulled/max)*(h-24);
+    let y=h-24;
+    ctx.fillStyle=bad; ctx.fillRect(x, y-pH, barW, pH); y-=pH;
+    ctx.fillStyle=good; ctx.fillRect(x, y-rH, barW, rH);
+    if(i%3===0){
+      ctx.fillStyle=sub; ctx.font='10px sans-serif'; ctx.textAlign='center';
+      const d=new Date(b.start);
+      ctx.fillText((d.getMonth()+1)+'/'+d.getDate(), x+barW/2, h-8);
+    }
+  });
+}
+function renderHoursChart(){
+  const cv=document.getElementById('chartHours');
+  const {ctx,w,h}=setupCanvas(cv);
+  ctx.clearRect(0,0,w,h);
+  const buckets=new Array(24).fill(0);
+  state.events.forEach(e=>{ buckets[new Date(e.ts).getHours()]++; });
+  const max=Math.max(1,...buckets);
+  const bw=w/24;
+  const accent=cssVar('--accent')||'#8b7cf6', sub=cssVar('--sub')||'#999';
+  buckets.forEach((v,i)=>{
+    const bh=(v/max)*(h-20);
+    ctx.fillStyle=accent;
+    ctx.fillRect(i*bw+bw*0.15, h-20-bh, bw*0.7, bh);
+    if(i%6===0){
+      ctx.fillStyle=sub; ctx.font='10px sans-serif'; ctx.textAlign='center';
+      ctx.fillText(i+':00', i*bw+bw/2, h-6);
+    }
+  });
+}
+function renderTriggersChart(){
+  const cv=document.getElementById('chartTriggers');
+  const {ctx,w,h}=setupCanvas(cv);
+  ctx.clearRect(0,0,w,h);
+  const counts={};
+  state.events.forEach(e=>{ if(e.trigger) counts[e.trigger]=(counts[e.trigger]||0)+1; });
+  const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  if(entries.length===0){
+    ctx.fillStyle=cssVar('--sub')||'#999'; ctx.font='13px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('Not enough data yet', w/2, h/2);
+    return;
+  }
+  const max=Math.max(...entries.map(e=>e[1]));
+  const rowH=h/entries.length;
+  const accent2=cssVar('--accent2')||'#c084fc', text=cssVar('--text')||'#fff';
+  entries.forEach(([label,count],i)=>{
+    const y=i*rowH+rowH*0.2, barH=rowH*0.6;
+    const barW=(count/max)*(w-90);
+    ctx.fillStyle=accent2;
+    ctx.fillRect(0,y,barW,barH);
+    ctx.fillStyle=text; ctx.font='12px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText(label+' ('+count+')', barW+8, y+barH/2);
+  });
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(t._h);
+  t._h=setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+function exportData(){
+  const blob=new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='trichyguard-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast('Backup downloaded.');
+}
+function importData(ev){
+  const file=ev.target.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const parsed=JSON.parse(reader.result);
+      if(!parsed.events) throw new Error('bad file');
+      state=parsed;
+      saveData();
+      renderHome();
+      showToast('Backup restored.');
+    }catch(e){ showToast('That file could not be read.'); }
+  };
+  reader.readAsText(file);
+  ev.target.value='';
+}
+function resetData(){
+  if(!confirm('This permanently erases all Trichyguard data on this device. Continue?')) return;
+  localStorage.removeItem(STORE_KEY);
+  state=loadData();
+  renderHome();
+  showToast('All data erased.');
+}
+
+function toggleReminders(){
+  state.settings.remindersOn=!state.settings.remindersOn;
+  document.getElementById('switchReminders').classList.toggle('on', state.settings.remindersOn);
+  document.getElementById('reminderIntervalRow').style.display = state.settings.remindersOn ? 'flex':'none';
+  if(state.settings.remindersOn && 'Notification' in window && Notification.permission==='default'){
+    Notification.requestPermission();
+  }
+  saveData();
+}
+function setReminderInterval(v){
+  state.settings.reminderHours=Math.max(1, Math.min(12, parseInt(v)||2));
+  document.getElementById('reminderIntervalLabel').textContent=state.settings.reminderHours+' hour'+(state.settings.reminderHours>1?'s':'');
+  saveData();
+}
+function checkReminder(){
+  if(!state.settings.remindersOn) return;
+  if(!('Notification' in window) || Notification.permission!=='granted') return;
+  const intervalMs=state.settings.reminderHours*3600000;
+  if(Date.now()-(state.lastReminderAt||0) >= intervalMs){
+    new Notification('Trichyguard check-in', {body:"How are your hands doing right now?"});
+    state.lastReminderAt=Date.now();
+    saveData();
+  }
+}
+setInterval(checkReminder, 60000);
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
+
+document.getElementById('switchReminders').classList.toggle('on', !!state.settings.remindersOn);
+document.getElementById('reminderIntervalRow').style.display = state.settings.remindersOn ? 'flex':'none';
+document.getElementById('reminderIntervalInput').value=state.settings.reminderHours||2;
+document.getElementById('reminderIntervalLabel').textContent=(state.settings.reminderHours||2)+' hours';
+
+renderHome();
+</script>
+</body>
+</html>
