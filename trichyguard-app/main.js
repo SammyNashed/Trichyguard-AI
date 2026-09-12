@@ -40,13 +40,16 @@ let mainWindow = null;
 let tray = null;
 
 function createWindow() {
-  // x/y are not set here: Wayland's protocol gives clients no way to
-  // request their own screen position at all (compositor-only decision) --
-  // placement comes entirely from the Hyprland windowrule in
-  // ~/.config/hypr/edit_here/source/window_rules.conf instead.
+  // show:false -- no visible window at all while just watching. The point
+  // is zero interface until it actually catches something: the camera
+  // detection loop runs in this hidden window's renderer the whole time
+  // (backgroundThrottling:false below keeps it at full speed even though
+  // nothing is on screen), and the window only ever appears via
+  // lockToFullScreen(), full screen, for the duration of an actual catch.
   mainWindow = new BrowserWindow({
     width: PINNED_SIZE.width,
     height: PINNED_SIZE.height,
+    show: false,
     resizable: true,
     alwaysOnTop: true,
     frame: false,
@@ -91,21 +94,17 @@ function createWindow() {
 
 // A browser page can't force itself fullscreen or steal focus without a
 // fresh click -- deliberate browser security policy, and the reason the
-// lock only ever covered its own small pinned window instead of taking
-// over the screen. Electron's main process has no such restriction: it can
-// do this at any time, which is the entire point of running as a native
-// app instead of a tab.
+// lock only ever covered its own small window instead of taking over the
+// screen. Electron's main process has no such restriction: it can do this
+// at any time, which is the entire point of running as a native app
+// instead of a tab.
 //
-// One real bug found testing this for real: Hyprland auto-un-pins a window
-// the moment it goes fullscreen (confirmed via a scripted check -- pinned
-// flips from true to false). A pinned window only "follows" across
-// workspaces via that pin; once unpinned mid-transition, it snaps to
-// whatever workspace it happened to be on, which is very often NOT the one
-// you're actually looking at -- so it can go fullscreen and you'd never
-// see it. Fixed by explicitly moving it to the currently active workspace
-// and focusing it via hyprctl *before* requesting fullscreen, and
-// re-pinning it after unlocking (Hyprland's own pin is a one-shot
-// windowrule effect at window creation, it doesn't reapply on its own).
+// The window is hidden (show:false) the entire time it's just watching, so
+// unlike the earlier pinned-corner-window design, there's nothing already
+// visible on any workspace to "follow" you. It has to be explicitly moved
+// to whichever workspace is actually active *before* it's shown --
+// otherwise it would appear fullscreen on whatever workspace it happened
+// to be created on, which is very often not the one you're looking at.
 function lockToFullScreen() {
   if (!mainWindow) return;
   try {
@@ -124,19 +123,7 @@ function unlockFromFullScreen() {
   if (!mainWindow) return;
   mainWindow.setFullScreen(false);
   mainWindow.setSize(PINNED_SIZE.width, PINNED_SIZE.height);
-  mainWindow.setAlwaysOnTop(true, 'floating');
-  try {
-    // `dispatch pin` toggles rather than sets -- only fire it if Hyprland
-    // actually still has this window unpinned (the auto-unpin from going
-    // fullscreen), so this can't accidentally un-pin an already-pinned
-    // window on some other code path.
-    const clients = JSON.parse(execFileSync('hyprctl', ['clients', '-j']).toString());
-    const win = clients.find((c) => c.class === 'trichyguard-app');
-    if (win && !win.pinned) hypr('dispatch', 'pin', HYPR_CLASS_SELECTOR);
-  } catch (e) {
-    console.log('could not verify pin state:', e.message);
-  }
-  hypr('dispatch', 'movewindowpixel', `exact 1156 57,${HYPR_CLASS_SELECTOR}`);
+  mainWindow.hide();
 }
 
 ipcMain.on('trichyguard-lock', lockToFullScreen);
