@@ -182,6 +182,26 @@ canvas{width:100%; display:block;}
 #guardOverlayCanvas{position:absolute; inset:0; width:100%; height:100%; transform:scaleX(-1);}
 .guard-controls{display:flex; flex-direction:column; gap:12px;}
 .guard-note{font-size:.78rem; color:var(--sub); text-align:center; margin-top:10px; line-height:1.5;}
+
+.stop-overlay{
+  position:fixed; inset:0; z-index:99999;
+  background:radial-gradient(circle at 50% 30%, #2b0f14, #150609 70%);
+  display:none; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; padding:32px; cursor:pointer; user-select:none;
+}
+.stop-overlay.active{display:flex;}
+.stop-ring{
+  width:min(46vw,220px); height:min(46vw,220px); border-radius:50%;
+  border:6px solid var(--bad); display:flex; align-items:center; justify-content:center;
+  font-size:min(14vw,64px); color:var(--bad); margin-bottom:28px;
+  box-shadow:0 0 60px rgba(248,113,113,.5);
+  animation:stopPulse 1.1s ease-in-out infinite;
+}
+@keyframes stopPulse{0%,100%{transform:scale(1)} 50%{transform:scale(1.06)}}
+.stop-ring.clearing{border-color:var(--good); color:var(--good); box-shadow:0 0 60px rgba(74,222,128,.5); animation:none;}
+.stop-title{font-size:clamp(1.5rem,6vw,2.2rem); font-weight:800; color:#fff; margin-bottom:10px;}
+.stop-sub{font-size:1rem; color:#e3d9dc; max-width:380px; line-height:1.5; margin-bottom:6px;}
+.stop-foot{position:absolute; bottom:22px; left:0; right:0; font-size:.72rem; color:#a9959a; padding:0 24px; line-height:1.5;}
 </style>
 </head>
 <body>
@@ -218,8 +238,8 @@ canvas{width:100%; display:block;}
 
     <div class="guard-hero">
       <div class="l">On-device hand tracking</div>
-      <p>Watches your webcam for a hand lingering near your hair and interrupts you automatically — before you've consciously decided to pull.</p>
-      <p>Everything runs locally in this browser tab using Google's MediaPipe hand + face tracking. <strong>No video is ever recorded, stored, or sent anywhere</strong> — the camera feed never leaves your device. The preview below is shown so you can always see exactly what it sees.</p>
+      <p>Watches your webcam for a hand lingering near your hair. The instant it catches one, it locks this tab full-screen with no close button — no tagging, no logging, nothing to fill in. It only unlocks once your hand has been away for a couple of seconds.</p>
+      <p>Everything runs locally in this browser tab using Google's MediaPipe hand + face tracking. <strong>No video is ever recorded, stored, or sent anywhere.</strong></p>
     </div>
 
     <div class="guard-status" id="guardStatus"><div class="pulse"></div><span id="guardStatusText">AI Guard is off</span></div>
@@ -381,6 +401,13 @@ canvas{width:100%; display:block;}
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="stop-overlay" id="stopOverlay" onclick="handleStopOverlayClick()">
+  <div class="stop-ring" id="stopRing">✋</div>
+  <div class="stop-title" id="stopTitle">Hand caught near your hair</div>
+  <div class="stop-sub" id="stopSub">This won't lift until your hand has been away for a couple of seconds. Just move it — that's all this needs.</div>
+  <div class="stop-foot">Trichyguard locks this browser tab only — it can't block system-level shortcuts on this computer.</div>
+</div>
 
 <script>
 const STORE_KEY='trichyguard_v1';
@@ -764,11 +791,14 @@ const GUARD_HAND_MODEL='https://storage.googleapis.com/mediapipe-models/hand_lan
 const GUARD_FACE_MODEL='https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite';
 const GUARD_ALERT_FRAMES=6;
 const GUARD_TICK_MS=180;
-const GUARD_COOLDOWN_MS=20000;
+const GUARD_CLEAR_MS=2500;
+const GUARD_CLEAR_TICKS=Math.ceil(GUARD_CLEAR_MS/GUARD_TICK_MS);
+const GUARD_POST_CLEAR_COOLDOWN_MS=1000;
 
 let guardActive=false, guardBusy=false;
 let guardStream=null, guardHandLandmarker=null, guardFaceDetector=null;
-let guardTickHandle=null, guardNearCount=0, guardCooldownUntil=0;
+let guardTickHandle=null, guardNearCount=0;
+let guardHardStopActive=false, guardAwayTicks=0, guardPostClearCooldownUntil=0;
 
 function setGuardStatus(mode, text){
   const el=document.getElementById('guardStatus');
@@ -787,6 +817,9 @@ async function toggleGuard(){
   if(guardActive){ stopGuard('AI Guard is off'); return; }
   if(guardBusy) return;
   guardBusy=true;
+  if(document.documentElement.requestFullscreen){
+    document.documentElement.requestFullscreen().catch(()=>{});
+  }
   setGuardButtonLabel('Starting…', true);
   setGuardStatus(null, 'Requesting camera…');
   try{
@@ -814,7 +847,7 @@ async function toggleGuard(){
     guardNearCount=0;
     setGuardButtonLabel('Turn off AI Guard', false);
     setGuardStatus('watching', 'Watching — hands clear');
-    document.getElementById('guardNote').textContent='Running fully offline in this browser tab. Switch tabs or lock your screen and it stops seeing anything, by design.';
+    document.getElementById('guardNote').textContent='Running fully offline in this browser tab. It only watches while this tab is open and visible in front of you.';
     guardTickHandle=setInterval(guardTick, GUARD_TICK_MS);
   }catch(err){
     console.error('AI Guard failed to start', err);
@@ -844,6 +877,8 @@ function stopGuard(statusText){
   guardActive=false;
   if(guardTickHandle){ clearInterval(guardTickHandle); guardTickHandle=null; }
   stopGuardCamera();
+  guardHardStopActive=false;
+  document.getElementById('stopOverlay').classList.remove('active');
   setGuardButtonLabel('👁️ Enable AI Guard', false);
   setGuardStatus(null, statusText||'AI Guard is off');
 }
@@ -930,16 +965,27 @@ function guardTick(){
 
   if(handInZone){
     guardNearCount++;
-    setGuardStatus('alert', '⚠️ Hand near hair');
+    guardAwayTicks=0;
+    if(guardHardStopActive){
+      resetStopOverlayToLocked();
+    }else{
+      setGuardStatus('alert', '⚠️ Hand near hair');
+      if(guardNearCount>=GUARD_ALERT_FRAMES && Date.now()>=guardPostClearCooldownUntil){
+        guardNearCount=0;
+        activateHardStop();
+      }
+    }
   }else{
     guardNearCount=0;
-    setGuardStatus('watching', 'Watching — hands clear');
-  }
-
-  if(guardNearCount>=GUARD_ALERT_FRAMES && Date.now()>=guardCooldownUntil){
-    guardCooldownUntil=Date.now()+GUARD_COOLDOWN_MS;
-    guardNearCount=0;
-    fireGuardAlert();
+    if(guardHardStopActive){
+      guardAwayTicks++;
+      updateStopOverlayProgress(guardAwayTicks);
+      if(guardAwayTicks>=GUARD_CLEAR_TICKS){
+        clearHardStop();
+      }
+    }else{
+      setGuardStatus('watching', 'Watching — hands clear');
+    }
   }
 }
 
@@ -955,18 +1001,57 @@ function guardBeep(){
     o.start(); o.stop(ctx.currentTime+0.4);
   }catch(e){}
 }
-function fireGuardAlert(){
-  guardBeep();
-  if(navigator.vibrate) navigator.vibrate([120,60,120]);
-  pendingTrigger='Caught by AI Guard';
-  document.getElementById('ivStepTrigger').style.display='block';
-  document.getElementById('ivStepBreathe').style.display='none';
-  document.getElementById('ivStepResult').style.display='none';
-  document.getElementById('triggerNote').value='';
-  buildChips(document.getElementById('triggerChips'), t=>pendingTrigger=t);
-  document.getElementById('interventionOverlay').classList.add('active');
-  showToast('AI Guard caught your hand near your hair.');
+function resetStopOverlayToLocked(){
+  document.getElementById('stopRing').classList.remove('clearing');
+  document.getElementById('stopRing').textContent='✋';
+  document.getElementById('stopTitle').textContent='Hand caught near your hair';
+  document.getElementById('stopSub').textContent="This won't lift until your hand has been away for a couple of seconds. Just move it — that's all this needs.";
+  setGuardStatus('alert', '🔒 Locked — hand near hair');
 }
+function updateStopOverlayProgress(ticks){
+  const remainingMs=Math.max(0, (GUARD_CLEAR_TICKS-ticks)*GUARD_TICK_MS);
+  document.getElementById('stopRing').classList.add('clearing');
+  document.getElementById('stopRing').textContent='✓';
+  document.getElementById('stopTitle').textContent='Hand is clear — hold it there';
+  document.getElementById('stopSub').textContent='Unlocking in '+(remainingMs/1000).toFixed(1)+'s if it stays away…';
+  setGuardStatus('alert', '🔓 Clearing…');
+}
+function activateHardStop(){
+  guardHardStopActive=true;
+  guardAwayTicks=0;
+  resetStopOverlayToLocked();
+  document.getElementById('stopOverlay').classList.add('active');
+  guardBeep();
+  if(navigator.vibrate) navigator.vibrate([150,80,150,80,150]);
+  if(!document.fullscreenElement && document.documentElement.requestFullscreen){
+    document.documentElement.requestFullscreen().catch(()=>{});
+  }
+}
+function clearHardStop(){
+  guardHardStopActive=false;
+  guardAwayTicks=0;
+  guardPostClearCooldownUntil=Date.now()+GUARD_POST_CLEAR_COOLDOWN_MS;
+  document.getElementById('stopOverlay').classList.remove('active');
+  setGuardStatus('watching', 'Watching — hands clear');
+  state.events.push({ts:Date.now(), type:'resisted', trigger:'Caught by AI Guard', note:''});
+  saveData();
+  renderHome();
+  showToast('Logged automatically — nice.');
+}
+function handleStopOverlayClick(){
+  if(!document.fullscreenElement && document.documentElement.requestFullscreen){
+    document.documentElement.requestFullscreen().catch(()=>{});
+  }
+}
+window.addEventListener('keydown', e=>{
+  if(guardHardStopActive){ e.preventDefault(); e.stopPropagation(); }
+}, true);
+window.addEventListener('beforeunload', e=>{
+  if(guardHardStopActive){ e.preventDefault(); e.returnValue=''; }
+});
+window.addEventListener('contextmenu', e=>{
+  if(guardHardStopActive) e.preventDefault();
+});
 
 document.addEventListener('visibilitychange', ()=>{
   if(!guardActive) return;
