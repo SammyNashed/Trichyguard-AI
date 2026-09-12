@@ -761,7 +761,7 @@ setInterval(checkReminder, 60000);
 
 const GUARD_VISION_BASE='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const GUARD_HAND_MODEL='https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
-const GUARD_FACE_MODEL='https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.task';
+const GUARD_FACE_MODEL='https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite';
 const GUARD_ALERT_FRAMES=6;
 const GUARD_TICK_MS=180;
 const GUARD_COOLDOWN_MS=20000;
@@ -813,6 +813,7 @@ async function toggleGuard(){
     if(err && err.name==='NotAllowedError') msg='Camera permission was denied. Allow camera access to use AI Guard.';
     else if(err && err.name==='NotFoundError') msg='No camera was found on this device.';
     else if(!navigator.onLine) msg='No internet connection — the AI model needs to download once before first use.';
+    else if(err && err.message) msg='Could not start AI Guard: '+err.message;
     setGuardStatus(null, msg);
     setGuardButtonLabel('👁️ Enable AI Guard', false);
     stopGuardCamera();
