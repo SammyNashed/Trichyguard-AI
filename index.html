@@ -797,8 +797,17 @@ async function toggleGuard(){
     document.getElementById('guardPreviewWrap').classList.add('active');
 
     if(!guardHandLandmarker || !guardFaceDetector){
+      const downloadStarted=Date.now();
+      const progressHandle=setInterval(()=>{
+        const secs=Math.round((Date.now()-downloadStarted)/1000);
+        setGuardStatus(null, 'Downloading on-device AI model… ('+secs+'s — it\'s about 17MB, this can take a minute on a slower connection)');
+      }, 1000);
       setGuardStatus(null, 'Downloading on-device AI model…');
-      await withTimeout(loadGuardModels(), 45000, 'The AI model took too long to download or load. Check your connection and try again — it usually works on a retry.');
+      try{
+        await withTimeout(loadGuardModels(), 120000, 'The AI model (about 17MB) took over 2 minutes to download. That usually means a slow or unstable connection — try again on a faster network, or give it another try here.');
+      }finally{
+        clearInterval(progressHandle);
+      }
     }
 
     guardActive=true;
