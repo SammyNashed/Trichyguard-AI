@@ -4,189 +4,39 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Trichyguard</title>
-<meta name="description" content="A private, on-device companion for interrupting hair-pulling urges (trichotillomania / BFRB) and tracking recovery.">
+<meta name="description" content="Watches for a hand near your hair and locks the screen until it's clear. No accounts, no logging, no data ever stored.">
 <meta name="theme-color" content="#141221">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>
 :root{
-  --bg:#0f0e17; --bg2:#191728; --card:#211f34; --card2:#2a273f;
-  --text:#f2f0fa; --sub:#a9a5c4; --accent:#8b7cf6; --accent2:#c084fc;
-  --good:#4ade80; --bad:#f87171; --warn:#fbbf24;
-  --radius:20px;
+  --bg:#0f0e17; --card:#1c1a2b; --text:#f2f0fa; --sub:#a9a5c4;
+  --accent:#8b7cf6; --accent2:#c084fc; --bad:#f87171; --good:#4ade80;
 }
 @media (prefers-color-scheme: light){
-  :root{
-    --bg:#f6f5fb; --bg2:#ffffff; --card:#ffffff; --card2:#f0edfb;
-    --text:#1c1a2b; --sub:#615c7a; --accent:#7c5cf0; --accent2:#a855f7;
-  }
+  :root{ --bg:#f6f5fb; --card:#ffffff; --text:#1c1a2b; --sub:#615c7a; --accent:#7c5cf0; --accent2:#a855f7; }
 }
-*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-html,body{margin:0; height:100%;}
+*{box-sizing:border-box;}
+html,body{margin:0; height:100%; overflow:hidden;}
 body{
-  background:linear-gradient(180deg,var(--bg),var(--bg2) 60%);
-  color:var(--text);
+  background:var(--bg); color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  min-height:100vh;
-  padding-bottom:88px;
-  overflow-x:hidden;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  height:100vh; padding:16px;
 }
-.app{max-width:520px; margin:0 auto; padding:20px 18px 8px;}
-header.top{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
-header.top .brand{display:flex; align-items:center; gap:10px; font-weight:700; font-size:1.15rem;}
-header.top .brand .dot{width:12px;height:12px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:0 0 14px var(--accent);}
-.streak-card{
-  background:linear-gradient(160deg,var(--card),var(--card2));
-  border-radius:calc(var(--radius) + 6px);
-  padding:28px 24px;
-  text-align:center;
-  box-shadow:0 10px 30px rgba(0,0,0,.25);
-  position:relative;
-  overflow:hidden;
-}
-.streak-card .label{color:var(--sub); font-size:.82rem; letter-spacing:.08em; text-transform:uppercase;}
-.streak-card .num{font-size:3.4rem; font-weight:800; line-height:1.05; margin:6px 0 2px; background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent;}
-.streak-card .unit{color:var(--sub); font-size:.95rem;}
-.streak-card .best{margin-top:14px; font-size:.8rem; color:var(--sub);}
-.grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px;}
-.stat-mini{background:var(--card); border-radius:16px; padding:14px; text-align:center;}
-.stat-mini .n{font-size:1.4rem; font-weight:700;}
-.stat-mini .l{font-size:.72rem; color:var(--sub); margin-top:2px;}
-.cta-row{margin-top:20px; display:flex; flex-direction:column; gap:12px;}
-button{font-family:inherit; border:none; cursor:pointer;}
-.btn-urge{
-  background:linear-gradient(135deg,var(--accent),var(--accent2));
-  color:#fff; font-size:1.15rem; font-weight:700;
-  padding:20px; border-radius:18px;
-  box-shadow:0 8px 24px rgba(139,124,246,.4);
-  display:flex; align-items:center; justify-content:center; gap:10px;
-}
-.btn-urge:active{transform:scale(.98);}
-.btn-secondary{
-  background:var(--card); color:var(--text); font-weight:600; font-size:.95rem;
-  padding:16px; border-radius:16px; display:flex; align-items:center; justify-content:center; gap:8px;
-}
-.section-title{margin:26px 0 10px; font-size:.95rem; font-weight:700; color:var(--sub); letter-spacing:.02em;}
-.feed{display:flex; flex-direction:column; gap:8px;}
-.feed-item{background:var(--card); border-radius:14px; padding:12px 14px; display:flex; align-items:center; gap:10px; font-size:.88rem;}
-.feed-item .icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
-.feed-item .icon.resist{background:rgba(74,222,128,.15); color:var(--good);}
-.feed-item .icon.pull{background:rgba(248,113,113,.15); color:var(--bad);}
-.feed-item .icon.unknown{background:rgba(168,165,196,.15); color:var(--sub);}
-.feed-item .main{flex:1; min-width:0;}
-.feed-item .t{color:var(--sub); font-size:.75rem;}
-.feed-item .tag-note{color:var(--sub); font-size:.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-.empty-note{color:var(--sub); font-size:.85rem; text-align:center; padding:20px 10px;}
-
-nav.tabbar{
-  position:fixed; bottom:0; left:0; right:0;
-  background:var(--card); border-top:1px solid rgba(128,128,128,.15);
-  display:flex; justify-content:space-around;
-  padding:8px max(8px,env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom));
-  z-index:40;
-}
-nav.tabbar .tab{background:none; color:var(--sub); display:flex; flex-direction:column; align-items:center; gap:3px; font-size:.68rem; font-weight:600; padding:6px 10px; border-radius:12px;}
-nav.tabbar .tab.active{color:var(--accent);}
-nav.tabbar .tab svg{width:22px;height:22px;}
-
-.screen{display:none;}
-.screen.active{display:block;}
-
-.overlay{
-  position:fixed; inset:0; background:var(--bg); z-index:100;
-  display:none; flex-direction:column;
-  animation:fadein .2s ease;
-}
-.overlay.active{display:flex;}
-@keyframes fadein{from{opacity:0} to{opacity:1}}
-.overlay-body{flex:1; overflow-y:auto; padding:22px 20px 40px; max-width:520px; width:100%; margin:0 auto;}
-.overlay-close{position:absolute; top:16px; right:16px; background:var(--card); width:38px;height:38px;border-radius:50%; display:flex;align-items:center;justify-content:center; font-size:1.2rem; color:var(--sub); z-index:5;}
-
-.step-label{color:var(--sub); font-size:.8rem; text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px;}
-.step-title{font-size:1.5rem; font-weight:800; margin:0 0 18px; line-height:1.25;}
-.chip-row{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;}
-.chip{background:var(--card); color:var(--text); padding:10px 16px; border-radius:100px; font-size:.9rem; font-weight:600;}
-.chip.selected{background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff;}
-textarea, input[type=text], input[type=number]{
-  width:100%; background:var(--card); color:var(--text); border:1px solid rgba(128,128,128,.2);
-  border-radius:14px; padding:14px; font-size:.95rem; font-family:inherit; resize:vertical;
-}
-.primary-btn{
-  width:100%; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff;
-  font-weight:700; font-size:1.05rem; padding:17px; border-radius:16px; margin-top:20px;
-}
-.ghost-btn{width:100%; background:transparent; color:var(--sub); font-weight:600; font-size:.9rem; padding:14px; margin-top:8px; text-align:center;}
-
-.breath-wrap{display:flex; flex-direction:column; align-items:center; padding:20px 0 10px;}
-.breath-circle{
-  width:200px; height:200px; border-radius:50%;
-  background:radial-gradient(circle at 35% 30%, var(--accent2), var(--accent));
-  display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:1.1rem;
-  box-shadow:0 0 60px rgba(139,124,246,.5);
-  transition:transform 4s ease-in-out;
-}
-.breath-timer{font-size:2.4rem; font-weight:800; margin:22px 0 4px;}
-.breath-sub{color:var(--sub); font-size:.9rem;}
-.suggestion-card{background:var(--card); border-radius:16px; padding:16px 18px; margin-top:22px; font-size:.92rem;}
-.suggestion-card .l{color:var(--accent2); font-weight:700; font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;}
-
-.result-emoji{font-size:3.4rem; text-align:center; margin-bottom:6px;}
-.result-title{font-size:1.5rem; font-weight:800; text-align:center; margin-bottom:8px;}
-.result-sub{color:var(--sub); text-align:center; font-size:.92rem; margin-bottom:24px;}
-.result-choice{display:flex; flex-direction:column; gap:12px;}
-
-canvas{width:100%; display:block;}
-.chart-card{background:var(--card); border-radius:16px; padding:16px; margin-bottom:14px;}
-.chart-card .title{font-weight:700; font-size:.9rem; margin-bottom:10px;}
-.legend{display:flex; gap:16px; font-size:.78rem; color:var(--sub); margin-top:8px;}
-.legend span{display:inline-flex; align-items:center; gap:6px;}
-.legend i{width:10px;height:10px;border-radius:3px; display:inline-block;}
-
-
-.setting-row{display:flex; align-items:center; justify-content:space-between; background:var(--card); border-radius:14px; padding:14px 16px; margin-bottom:10px;}
-.setting-row .l{font-size:.92rem; font-weight:600;}
-.setting-row .d{font-size:.76rem; color:var(--sub); margin-top:2px;}
-.switch{position:relative; width:46px; height:26px; background:rgba(128,128,128,.3); border-radius:100px; flex-shrink:0;}
-.switch.on{background:var(--accent);}
-.switch .knob{position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:left .15s ease;}
-.switch.on .knob{left:23px;}
-.danger-btn{width:100%; background:rgba(248,113,113,.12); color:var(--bad); font-weight:700; padding:14px; border-radius:14px; margin-top:6px; font-size:.9rem;}
-.about-box{background:var(--card); border-radius:16px; padding:18px; font-size:.85rem; color:var(--sub); line-height:1.6; margin-top:16px;}
-.toast{
-  position:fixed; left:50%; bottom:100px; transform:translateX(-50%);
-  background:var(--card2); color:var(--text); padding:12px 20px; border-radius:100px; font-size:.88rem; font-weight:600;
-  box-shadow:0 8px 24px rgba(0,0,0,.3); z-index:200; opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease;
-}
-.toast.show{opacity:1; transform:translateX(-50%) translateY(-8px);}
-
-.confirm-banner{
-  position:fixed; left:16px; right:16px; bottom:88px; max-width:488px; margin:0 auto;
-  background:var(--card2); border-radius:18px; padding:16px 18px; box-shadow:0 10px 30px rgba(0,0,0,.35);
-  z-index:150; display:none;
-}
-.confirm-banner.show{display:block;}
-.confirm-banner .q{font-weight:700; font-size:.95rem; margin-bottom:12px;}
-.confirm-banner .row{display:flex; gap:10px;}
-.confirm-banner button{flex:1; padding:12px; border-radius:12px; font-weight:700; font-size:.88rem;}
-.confirm-banner .btn-yes-pulled{background:rgba(248,113,113,.15); color:var(--bad);}
-.confirm-banner .btn-no-resisted{background:rgba(74,222,128,.15); color:var(--good);}
-.confirm-banner .dismiss{position:absolute; top:10px; right:12px; background:none; color:var(--sub); font-size:1rem; padding:4px;}
-
-.guard-hero{background:linear-gradient(160deg,var(--card),var(--card2)); border-radius:calc(var(--radius) + 6px); padding:24px; margin-bottom:16px;}
-.guard-hero .l{color:var(--accent2); font-weight:700; font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px;}
-.guard-hero p{font-size:.9rem; color:var(--sub); line-height:1.55; margin:0 0 4px;}
-.guard-status{display:flex; align-items:center; gap:10px; background:var(--card); border-radius:16px; padding:16px; margin-bottom:14px; font-weight:700;}
-.guard-status .pulse{width:12px;height:12px;border-radius:50%; background:var(--sub); flex-shrink:0;}
-.guard-status.watching .pulse{background:var(--good); box-shadow:0 0 10px var(--good); animation:pulse 1.4s infinite;}
-.guard-status.alert .pulse{background:var(--bad); box-shadow:0 0 10px var(--bad);}
+.wrap{width:100%; max-width:360px; text-align:center;}
+.status{display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:14px; font-weight:700; font-size:.85rem; color:var(--sub);}
+.status .dot{width:9px;height:9px;border-radius:50%; background:var(--sub);}
+.status.watching .dot{background:var(--good); box-shadow:0 0 8px var(--good); animation:pulse 1.4s infinite;}
+.status.alert .dot{background:var(--bad); box-shadow:0 0 8px var(--bad);}
+.status.off .dot{background:var(--bad);}
 @keyframes pulse{0%,100%{opacity:1} 50%{opacity:.35}}
-.guard-preview-wrap{position:relative; border-radius:18px; overflow:hidden; background:#000; margin-bottom:14px; display:none;}
-.guard-preview-wrap.active{display:block;}
-#guardVideo{width:100%; display:block; transform:scaleX(-1);}
-#guardOverlayCanvas{position:absolute; inset:0; width:100%; height:100%; transform:scaleX(-1);}
-.guard-controls{display:flex; flex-direction:column; gap:12px;}
-.guard-note{font-size:.78rem; color:var(--sub); text-align:center; margin-top:10px; line-height:1.5;}
+.preview-wrap{position:relative; border-radius:16px; overflow:hidden; background:#000; display:none;}
+.preview-wrap.active{display:block;}
+video{width:100%; display:block; transform:scaleX(-1);}
+canvas{position:absolute; inset:0; width:100%; height:100%; transform:scaleX(-1);}
+.error-box{background:var(--card); border-radius:14px; padding:16px; font-size:.85rem; color:var(--sub); line-height:1.5;}
 
 .stop-overlay{
   position:fixed; inset:0; z-index:99999;
@@ -205,615 +55,51 @@ canvas{width:100%; display:block;}
 @keyframes stopPulse{0%,100%{transform:scale(1)} 50%{transform:scale(1.06)}}
 .stop-ring.clearing{border-color:var(--good); color:var(--good); box-shadow:0 0 60px rgba(74,222,128,.5); animation:none;}
 .stop-title{font-size:clamp(1.5rem,6vw,2.2rem); font-weight:800; color:#fff; margin-bottom:10px;}
-.stop-sub{font-size:1rem; color:#e3d9dc; max-width:380px; line-height:1.5; margin-bottom:6px;}
-.stop-foot{position:absolute; bottom:22px; left:0; right:0; font-size:.72rem; color:#a9959a; padding:0 24px; line-height:1.5;}
+.stop-sub{font-size:1rem; color:#e3d9dc; max-width:380px; line-height:1.5;}
 </style>
 </head>
 <body>
 
-<div class="app">
-  <header class="top">
-    <div class="brand"><span class="dot"></span> Trichyguard</div>
-  </header>
-
-  <section id="screen-home" class="screen active">
-    <div class="streak-card">
-      <div class="label">Current streak</div>
-      <div class="num" id="streakNum">0</div>
-      <div class="unit" id="streakUnit">hours pull-free</div>
-      <div class="best" id="bestStreak"></div>
-    </div>
-
-    <div class="grid2">
-      <div class="stat-mini"><div class="n" id="statResisted">0</div><div class="l">urges resisted</div></div>
-      <div class="stat-mini"><div class="n" id="statTotal">0</div><div class="l">total logged</div></div>
-    </div>
-
-    <div class="cta-row">
-      <button class="btn-urge" onclick="startIntervention()">✋ I feel an urge right now</button>
-      <button class="btn-secondary" onclick="openQuickPull()">It already happened — log it</button>
-    </div>
-
-    <div class="section-title">Recent activity</div>
-    <div class="feed" id="feed"></div>
-  </section>
-
-  <section id="screen-guard" class="screen">
-    <h2 style="margin:6px 0 16px;">AI Guard</h2>
-
-    <div class="guard-hero">
-      <div class="l">On-device hand tracking</div>
-      <p>Watches your webcam for a hand lingering near your hair. The instant it catches one, it locks this tab full-screen with no close button — no tagging, no logging, nothing to fill in. It only unlocks once your hand has been away for a couple of seconds.</p>
-      <p>Everything runs locally in this browser tab using Google's MediaPipe hand + face tracking. <strong>No video is ever recorded, stored, or sent anywhere.</strong></p>
-    </div>
-
-    <div class="guard-status" id="guardStatus"><div class="pulse"></div><span id="guardStatusText">AI Guard is off</span></div>
-
-    <div class="guard-preview-wrap" id="guardPreviewWrap">
-      <video id="guardVideo" autoplay playsinline muted></video>
-      <canvas id="guardOverlayCanvas"></canvas>
-    </div>
-
-    <div class="guard-controls">
-      <button class="btn-urge" id="guardToggleBtn" onclick="toggleGuard()">👁️ Enable AI Guard</button>
-    </div>
-    <div class="guard-note" id="guardNote">First activation downloads a small on-device AI model (a few MB, one time only) — needs internet once, then works offline. Requires camera access, and this browser tab has to stay open in front of you (a phone screen that's locked or a background tab can't see anything, by design).</div>
-  </section>
-
-  <section id="screen-stats" class="screen">
-    <h2 style="margin:6px 0 16px;">Your patterns</h2>
-    <div class="chart-card">
-      <div class="title">Last 14 days</div>
-      <canvas id="chartDays" height="140"></canvas>
-      <div class="legend"><span><i style="background:var(--good)"></i>resisted</span><span><i style="background:var(--bad)"></i>pulled</span></div>
-    </div>
-    <div class="chart-card">
-      <div class="title">Time of day</div>
-      <canvas id="chartHours" height="120"></canvas>
-    </div>
-    <div class="chart-card">
-      <div class="title">Common triggers</div>
-      <canvas id="chartTriggers" height="140"></canvas>
-    </div>
-  </section>
-
-  <section id="screen-settings" class="screen">
-    <h2 style="margin:6px 0 16px;">Settings</h2>
-    <div class="setting-row">
-      <div><div class="l">Check-in reminders</div><div class="d">A gentle nudge while the app is open</div></div>
-      <div class="switch" id="switchReminders" onclick="toggleReminders()"><div class="knob"></div></div>
-    </div>
-    <div class="setting-row" id="reminderIntervalRow" style="display:none">
-      <div><div class="l">Remind me every</div><div class="d" id="reminderIntervalLabel">2 hours</div></div>
-      <input type="number" id="reminderIntervalInput" min="1" max="12" value="2" style="width:70px; text-align:center;" onchange="setReminderInterval(this.value)">
-    </div>
-    <button class="danger-btn" onclick="resetData()">Erase all my data</button>
-
-    <div class="about-box">
-      I built Trichyguard for myself — I have trichotillomania, and I wanted something that could
-      catch my hand before I consciously noticed it was there. Everything stays on this device, in
-      your browser; nothing is uploaded, tracked, or shared, not even to me. "Erase all my data"
-      is permanent and immediate.
-      <br><br>
-      This isn't a substitute for therapy — habit reversal training with a licensed therapist
-      (often called HRT or ComB) is still the most evidence-backed treatment for this. The TLC
-      Foundation for BFRBs is a good place to find one if you're looking.
-    </div>
-  </section>
-</div>
-
-<nav class="tabbar">
-  <button class="tab active" data-tab="home" onclick="switchTab('home')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
-    Home
-  </button>
-  <button class="tab" data-tab="guard" onclick="switchTab('guard')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
-    Guard
-  </button>
-  <button class="tab" data-tab="stats" onclick="switchTab('stats')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
-    Stats
-  </button>
-  <button class="tab" data-tab="settings" onclick="switchTab('settings')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-    Settings
-  </button>
-</nav>
-
-<!-- Intervention overlay -->
-<div class="overlay" id="interventionOverlay">
-  <button class="overlay-close" onclick="closeIntervention()">✕</button>
-  <div class="overlay-body">
-
-    <div id="ivStepTrigger">
-      <div class="step-label">Step 1 of 3</div>
-      <div class="step-title">Before anything else — what's happening right now?</div>
-      <div class="chip-row" id="triggerChips"></div>
-      <textarea id="triggerNote" rows="3" placeholder="Anything else worth noting? (optional)"></textarea>
-      <button class="primary-btn" onclick="goToBreathing()">Continue</button>
-    </div>
-
-    <div id="ivStepBreathe" style="display:none">
-      <div class="step-label">Step 2 of 3</div>
-      <div class="step-title">Ride out the urge. It always passes.</div>
-      <div class="breath-wrap">
-        <div class="breath-circle" id="breathCircle">Breathe in</div>
-        <div class="breath-timer" id="breathTimer">3:00</div>
-        <div class="breath-sub">Keep your hands busy and away from your hair</div>
-      </div>
-      <div class="suggestion-card">
-        <div class="l">Try this instead</div>
-        <div id="suggestionText">Clench both fists tight for 10 seconds, then release slowly. Repeat.</div>
-      </div>
-      <button class="primary-btn" onclick="finishBreathing()" id="skipBreathBtn">I'm ready — how did it go?</button>
-    </div>
-
-    <div id="ivStepResult" style="display:none">
-      <div class="result-emoji">🌱</div>
-      <div class="result-title">Did you resist the urge?</div>
-      <div class="result-sub">Be honest with yourself — every data point helps, whichever way it went.</div>
-      <div class="result-choice">
-        <button class="btn-urge" onclick="logOutcome(true)">✅ Yes, I resisted</button>
-        <button class="btn-secondary" onclick="logOutcome(false)">It happened — I pulled</button>
-      </div>
-    </div>
-
+<div class="wrap" id="mainWrap">
+  <div class="status" id="statusRow"><div class="dot"></div><span id="statusText">Starting…</span></div>
+  <div class="preview-wrap" id="previewWrap">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="overlay"></canvas>
   </div>
-</div>
-
-<!-- Quick pull-log overlay -->
-<div class="overlay" id="quickPullOverlay">
-  <button class="overlay-close" onclick="closeQuickPull()">✕</button>
-  <div class="overlay-body">
-    <div class="step-label">Log a pull</div>
-    <div class="step-title">No judgment here. What was going on?</div>
-    <div class="chip-row" id="quickTriggerChips"></div>
-    <textarea id="quickNote" rows="3" placeholder="Anything else worth noting? (optional)"></textarea>
-    <button class="primary-btn" onclick="submitQuickPull()">Log it</button>
-    <button class="ghost-btn" onclick="closeQuickPull()">Cancel</button>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<div class="confirm-banner" id="guardConfirmBanner" style="position:relative;">
-  <button class="dismiss" onclick="dismissGuardConfirm()">✕</button>
-  <div class="q" id="guardConfirmText">AI Guard logged this catch.</div>
-  <div class="row">
-    <button class="btn-yes-pulled" id="guardFlipBtn" onclick="">Wrong — fix it</button>
-  </div>
+  <div class="error-box" id="errorBox" style="display:none;"></div>
 </div>
 
 <div class="stop-overlay" id="stopOverlay" onclick="handleStopOverlayClick()">
   <div class="stop-ring" id="stopRing">✋</div>
   <div class="stop-title" id="stopTitle">Hand caught near your hair</div>
-  <div class="stop-sub" id="stopSub">This won't lift until your hand has been away for a couple of seconds. Just move it — that's all this needs.</div>
-  <div class="stop-foot">Trichyguard locks this browser tab only — it can't block system-level shortcuts on this computer.</div>
+  <div class="stop-sub" id="stopSub">This won't lift until your hand has been away for a couple of seconds.</div>
 </div>
 
 <script>
-const STORE_KEY='trichyguard_v1';
-const TRIGGERS=['Stress','Boredom','Focus/reading','Phone or screen','Tired','Anxious','Alone','Other'];
+const VISION_BASE='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+const HAND_MODEL='https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+const FACE_MODEL='https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite';
 
-function loadData(){
-  try{
-    const raw=localStorage.getItem(STORE_KEY);
-    if(raw) return JSON.parse(raw);
-  }catch(e){}
-  return {events:[], settings:{remindersOn:false, reminderHours:2, installedAt:Date.now()}, lastReminderAt:0};
-}
-function saveData(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+const TICK_MS=180;
+const ALERT_FRAMES=6;
+const CLEAR_MS=2500;
+const CLEAR_TICKS=Math.ceil(CLEAR_MS/TICK_MS);
+const POST_CLEAR_COOLDOWN_MS=1000;
 
-let state=loadData();
-if(!state.settings) state.settings={remindersOn:false, reminderHours:2, installedAt:Date.now()};
-if(!state.settings.installedAt) state.settings.installedAt=Date.now();
+let handLandmarker=null, faceDetector=null, tickHandle=null;
+let nearCount=0, awayTicks=0, hardStopActive=false, postClearCooldownUntil=0;
+let stream=null;
 
-let pendingTrigger=null, pendingNote='';
-let breathTimerHandle=null, breathSecondsLeft=180;
-
-function switchTab(name){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('screen-'+name).classList.add('active');
-  document.querySelector('.tab[data-tab="'+name+'"]').classList.add('active');
-  if(name==='stats') renderCharts();
+function setStatus(mode, text){
+  const row=document.getElementById('statusRow');
+  row.classList.remove('watching','alert','off');
+  if(mode) row.classList.add(mode);
+  document.getElementById('statusText').textContent=text;
 }
-
-function fmtRelative(ts){
-  const diff=Date.now()-ts;
-  const m=Math.floor(diff/60000);
-  if(m<1) return 'just now';
-  if(m<60) return m+'m ago';
-  const h=Math.floor(m/60);
-  if(h<24) return h+'h ago';
-  const d=Math.floor(h/24);
-  return d+'d ago';
-}
-
-function lastPullTs(){
-  const pulls=state.events.filter(e=>e.type==='pulled');
-  if(pulls.length===0) return state.settings.installedAt;
-  return pulls[pulls.length-1].ts;
-}
-function longestStreakHours(){
-  const pulls=state.events.filter(e=>e.type==='pulled').map(e=>e.ts).sort((a,b)=>a-b);
-  let points=[state.settings.installedAt, ...pulls, Date.now()];
-  let best=0;
-  for(let i=1;i<points.length;i++){
-    best=Math.max(best, (points[i]-points[i-1])/3600000);
-  }
-  return Math.round(best);
-}
-
-function renderHome(){
-  const since=lastPullTs();
-  const hours=(Date.now()-since)/3600000;
-  const days=hours/24;
-  if(days>=2){
-    document.getElementById('streakNum').textContent=Math.floor(days);
-    document.getElementById('streakUnit').textContent='days pull-free';
-  }else{
-    document.getElementById('streakNum').textContent=Math.floor(hours);
-    document.getElementById('streakUnit').textContent='hours pull-free';
-  }
-  const best=longestStreakHours();
-  document.getElementById('bestStreak').textContent = best>0 ? ('Best streak: '+(best>=48?Math.floor(best/24)+' days':best+' hours')) : '';
-
-  const resisted=state.events.filter(e=>e.type==='resisted').length;
-  document.getElementById('statResisted').textContent=resisted;
-  document.getElementById('statTotal').textContent=state.events.length;
-
-  const feed=document.getElementById('feed');
-  const recent=[...state.events].sort((a,b)=>b.ts-a.ts).slice(0,12);
-  if(recent.length===0){
-    feed.innerHTML='<div class="empty-note">Nothing logged yet. When an urge hits, tap the button above.</div>';
-  }else{
-    feed.innerHTML=recent.map(e=>{
-      let icon='·', label='Logged a pull', cls='pull';
-      if(e.type==='resisted'){ icon='✅'; label='Resisted an urge'; cls='resist'; }
-      else if(e.type==='guard_catch'){ icon='❓'; label='AI Guard caught your hand — outcome unconfirmed'; cls='unknown'; }
-      const tag = e.trigger ? e.trigger : '';
-      return `<div class="feed-item"><div class="icon ${cls}">${icon}</div><div class="main"><div>${label}</div><div class="t">${fmtRelative(e.ts)}</div></div><div class="tag-note">${tag}</div></div>`;
-    }).join('');
-  }
-}
-
-function buildChips(container, onSelect){
-  container.innerHTML='';
-  TRIGGERS.forEach(t=>{
-    const c=document.createElement('button');
-    c.className='chip'; c.textContent=t;
-    c.onclick=()=>{
-      container.querySelectorAll('.chip').forEach(x=>x.classList.remove('selected'));
-      c.classList.add('selected');
-      onSelect(t);
-    };
-    container.appendChild(c);
-  });
-}
-
-function startIntervention(){
-  pendingTrigger=null; pendingNote='';
-  document.getElementById('ivStepTrigger').style.display='block';
-  document.getElementById('ivStepBreathe').style.display='none';
-  document.getElementById('ivStepResult').style.display='none';
-  document.getElementById('triggerNote').value='';
-  buildChips(document.getElementById('triggerChips'), t=>pendingTrigger=t);
-  document.getElementById('interventionOverlay').classList.add('active');
-}
-function closeIntervention(){
-  stopBreathing();
-  document.getElementById('interventionOverlay').classList.remove('active');
-}
-const SUGGESTIONS=[
-  "Clench both fists tight for 10 seconds, then release slowly. Repeat.",
-  "Hold something cold — an ice cube or a cold glass — and focus on the sensation.",
-  "Put lotion or gloves on your fingertips so pulling feels different, less automatic.",
-  "Grab a fidget object, stress ball, or piece of putty and squeeze it instead.",
-  "Sit on your hands for a slow count of 30, then let them rest in your lap.",
-  "Trace slow circles on your palm with your thumb — keep your fingers occupied.",
-  "Pick up a textured object nearby and just hold and feel it for a minute."
-];
-function goToBreathing(){
-  document.getElementById('ivStepTrigger').style.display='none';
-  document.getElementById('ivStepBreathe').style.display='block';
-  document.getElementById('suggestionText').textContent = SUGGESTIONS[Math.floor(Math.random()*SUGGESTIONS.length)];
-  breathSecondsLeft=180;
-  runBreathCycle();
-  updateBreathTimer();
-  breathTimerHandle=setInterval(()=>{
-    breathSecondsLeft--;
-    updateBreathTimer();
-    if(breathSecondsLeft<=0){ stopBreathing(); }
-  },1000);
-}
-function updateBreathTimer(){
-  const m=Math.floor(breathSecondsLeft/60), s=breathSecondsLeft%60;
-  document.getElementById('breathTimer').textContent = m+':'+(s<10?'0':'')+s;
-}
-let breathPhaseHandle=null;
-function runBreathCycle(){
-  const circle=document.getElementById('breathCircle');
-  let phase=0;
-  const phases=[
-    {label:'Breathe in', scale:'scale(1.25)', dur:4000},
-    {label:'Hold', scale:'scale(1.25)', dur:2000},
-    {label:'Breathe out', scale:'scale(0.85)', dur:5000},
-  ];
-  function step(){
-    const p=phases[phase%phases.length];
-    circle.textContent=p.label;
-    circle.style.transition='transform '+(p.dur/1000)+'s ease-in-out';
-    circle.style.transform=p.scale;
-    phase++;
-    breathPhaseHandle=setTimeout(step, p.dur);
-  }
-  step();
-}
-function stopBreathing(){
-  if(breathTimerHandle) clearInterval(breathTimerHandle);
-  if(breathPhaseHandle) clearTimeout(breathPhaseHandle);
-  breathTimerHandle=null; breathPhaseHandle=null;
-}
-function finishBreathing(){
-  stopBreathing();
-  document.getElementById('ivStepBreathe').style.display='none';
-  document.getElementById('ivStepResult').style.display='block';
-}
-function logOutcome(resisted){
-  pendingNote=document.getElementById('triggerNote').value.trim();
-  state.events.push({ts:Date.now(), type: resisted?'resisted':'pulled', trigger:pendingTrigger, note:pendingNote});
-  saveData();
-  closeIntervention();
-  document.getElementById('interventionOverlay').classList.remove('active');
-  renderHome();
-  showToast(resisted ? "Nice. That's one urge you didn't let win." : "Logged. Tomorrow's a fresh shot at it.");
-}
-
-function openQuickPull(){
-  document.getElementById('quickNote').value='';
-  buildChips(document.getElementById('quickTriggerChips'), t=>pendingTrigger=t);
-  pendingTrigger=null;
-  document.getElementById('quickPullOverlay').classList.add('active');
-}
-function closeQuickPull(){ document.getElementById('quickPullOverlay').classList.remove('active'); }
-function submitQuickPull(){
-  const note=document.getElementById('quickNote').value.trim();
-  state.events.push({ts:Date.now(), type:'pulled', trigger:pendingTrigger, note});
-  saveData();
-  closeQuickPull();
-  renderHome();
-  showToast('Logged. Thanks for being honest with yourself.');
-}
-
-function renderCharts(){
-  renderDaysChart();
-  renderHoursChart();
-  renderTriggersChart();
-}
-function setupCanvas(cv){
-  const dpr=window.devicePixelRatio||1;
-  const cssW=cv.clientWidth || cv.parentElement.clientWidth;
-  const cssH=parseInt(cv.getAttribute('height'))||120;
-  cv.width=cssW*dpr; cv.height=cssH*dpr;
-  const ctx=cv.getContext('2d');
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  return {ctx, w:cssW, h:cssH};
-}
-function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
-
-function renderDaysChart(){
-  const cv=document.getElementById('chartDays');
-  const {ctx,w,h}=setupCanvas(cv);
-  ctx.clearRect(0,0,w,h);
-  const days=14;
-  const now=new Date(); now.setHours(0,0,0,0);
-  const buckets=[];
-  for(let i=days-1;i>=0;i--){
-    const start=now.getTime()-i*86400000;
-    const end=start+86400000;
-    const resisted=state.events.filter(e=>e.ts>=start&&e.ts<end&&e.type==='resisted').length;
-    const pulled=state.events.filter(e=>e.ts>=start&&e.ts<end&&e.type==='pulled').length;
-    buckets.push({resisted,pulled,start});
-  }
-  const max=Math.max(1, ...buckets.map(b=>b.resisted+b.pulled));
-  const bw=w/days;
-  const good=cssVar('--good')||'#4ade80', bad=cssVar('--bad')||'#f87171', sub=cssVar('--sub')||'#999';
-  buckets.forEach((b,i)=>{
-    const x=i*bw+bw*0.2, barW=bw*0.6;
-    const rH=(b.resisted/max)*(h-24), pH=(b.pulled/max)*(h-24);
-    let y=h-24;
-    ctx.fillStyle=bad; ctx.fillRect(x, y-pH, barW, pH); y-=pH;
-    ctx.fillStyle=good; ctx.fillRect(x, y-rH, barW, rH);
-    if(i%3===0){
-      ctx.fillStyle=sub; ctx.font='10px sans-serif'; ctx.textAlign='center';
-      const d=new Date(b.start);
-      ctx.fillText((d.getMonth()+1)+'/'+d.getDate(), x+barW/2, h-8);
-    }
-  });
-}
-function renderHoursChart(){
-  const cv=document.getElementById('chartHours');
-  const {ctx,w,h}=setupCanvas(cv);
-  ctx.clearRect(0,0,w,h);
-  const buckets=new Array(24).fill(0);
-  state.events.forEach(e=>{ buckets[new Date(e.ts).getHours()]++; });
-  const max=Math.max(1,...buckets);
-  const bw=w/24;
-  const accent=cssVar('--accent')||'#8b7cf6', sub=cssVar('--sub')||'#999';
-  buckets.forEach((v,i)=>{
-    const bh=(v/max)*(h-20);
-    ctx.fillStyle=accent;
-    ctx.fillRect(i*bw+bw*0.15, h-20-bh, bw*0.7, bh);
-    if(i%6===0){
-      ctx.fillStyle=sub; ctx.font='10px sans-serif'; ctx.textAlign='center';
-      ctx.fillText(i+':00', i*bw+bw/2, h-6);
-    }
-  });
-}
-function renderTriggersChart(){
-  const cv=document.getElementById('chartTriggers');
-  const {ctx,w,h}=setupCanvas(cv);
-  ctx.clearRect(0,0,w,h);
-  const counts={};
-  state.events.forEach(e=>{ if(e.trigger) counts[e.trigger]=(counts[e.trigger]||0)+1; });
-  const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  if(entries.length===0){
-    ctx.fillStyle=cssVar('--sub')||'#999'; ctx.font='13px sans-serif'; ctx.textAlign='center';
-    ctx.fillText('Not enough data yet', w/2, h/2);
-    return;
-  }
-  const max=Math.max(...entries.map(e=>e[1]));
-  const rowH=h/entries.length;
-  const accent2=cssVar('--accent2')||'#c084fc', text=cssVar('--text')||'#fff';
-  entries.forEach(([label,count],i)=>{
-    const y=i*rowH+rowH*0.2, barH=rowH*0.6;
-    const barW=(count/max)*(w-90);
-    ctx.fillStyle=accent2;
-    ctx.fillRect(0,y,barW,barH);
-    ctx.fillStyle=text; ctx.font='12px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
-    ctx.fillText(label+' ('+count+')', barW+8, y+barH/2);
-  });
-}
-
-function showToast(msg){
-  const t=document.getElementById('toast');
-  t.textContent=msg;
-  t.classList.add('show');
-  clearTimeout(t._h);
-  t._h=setTimeout(()=>t.classList.remove('show'), 2600);
-}
-
-function resetData(){
-  if(!confirm('This permanently erases all Trichyguard data on this device. Continue?')) return;
-  localStorage.removeItem(STORE_KEY);
-  state=loadData();
-  renderHome();
-  showToast('All data erased.');
-}
-
-function toggleReminders(){
-  state.settings.remindersOn=!state.settings.remindersOn;
-  document.getElementById('switchReminders').classList.toggle('on', state.settings.remindersOn);
-  document.getElementById('reminderIntervalRow').style.display = state.settings.remindersOn ? 'flex':'none';
-  if(state.settings.remindersOn && 'Notification' in window && Notification.permission==='default'){
-    Notification.requestPermission();
-  }
-  saveData();
-}
-function setReminderInterval(v){
-  state.settings.reminderHours=Math.max(1, Math.min(12, parseInt(v)||2));
-  document.getElementById('reminderIntervalLabel').textContent=state.settings.reminderHours+' hour'+(state.settings.reminderHours>1?'s':'');
-  saveData();
-}
-function checkReminder(){
-  if(!state.settings.remindersOn) return;
-  if(!('Notification' in window) || Notification.permission!=='granted') return;
-  const intervalMs=state.settings.reminderHours*3600000;
-  if(Date.now()-(state.lastReminderAt||0) >= intervalMs){
-    new Notification('Trichyguard check-in', {body:"How are your hands doing right now?"});
-    state.lastReminderAt=Date.now();
-    saveData();
-  }
-}
-setInterval(checkReminder, 60000);
-
-const GUARD_VISION_BASE='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
-const GUARD_HAND_MODEL='https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
-const GUARD_FACE_MODEL='https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite';
-const GUARD_ALERT_FRAMES=6;
-const GUARD_TICK_MS=180;
-const GUARD_CLEAR_MS=2500;
-const GUARD_CLEAR_TICKS=Math.ceil(GUARD_CLEAR_MS/GUARD_TICK_MS);
-const GUARD_POST_CLEAR_COOLDOWN_MS=1000;
-
-let guardActive=false, guardBusy=false;
-let guardStream=null, guardHandLandmarker=null, guardFaceDetector=null;
-let guardTickHandle=null, guardNearCount=0;
-let guardHardStopActive=false, guardAwayTicks=0, guardPostClearCooldownUntil=0;
-
-function setGuardStatus(mode, text){
-  const el=document.getElementById('guardStatus');
-  el.classList.remove('watching','alert');
-  if(mode) el.classList.add(mode);
-  document.getElementById('guardStatusText').textContent=text;
-}
-function setGuardButtonLabel(text, disabled){
-  const b=document.getElementById('guardToggleBtn');
-  b.textContent=text;
-  b.disabled=!!disabled;
-  b.style.opacity=disabled?0.6:1;
-}
-
-async function toggleGuard(){
-  if(guardActive){ stopGuard('AI Guard is off'); return; }
-  if(guardBusy) return;
-  guardBusy=true;
-  if(document.documentElement.requestFullscreen){
-    document.documentElement.requestFullscreen().catch(()=>{});
-  }
-  setGuardButtonLabel('Starting…', true);
-  setGuardStatus(null, 'Requesting camera…');
-  try{
-    guardStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}, audio:false});
-    const video=document.getElementById('guardVideo');
-    video.srcObject=guardStream;
-    await video.play();
-    document.getElementById('guardPreviewWrap').classList.add('active');
-
-    if(!guardHandLandmarker || !guardFaceDetector){
-      const downloadStarted=Date.now();
-      const progressHandle=setInterval(()=>{
-        const secs=Math.round((Date.now()-downloadStarted)/1000);
-        setGuardStatus(null, 'Downloading on-device AI model… ('+secs+'s — it\'s about 17MB, this can take a minute on a slower connection)');
-      }, 1000);
-      setGuardStatus(null, 'Downloading on-device AI model…');
-      try{
-        await withTimeout(loadGuardModels(), 120000, 'The AI model (about 17MB) took over 2 minutes to download. That usually means a slow or unstable connection — try again on a faster network, or give it another try here.');
-      }finally{
-        clearInterval(progressHandle);
-      }
-    }
-
-    guardActive=true;
-    guardNearCount=0;
-    setGuardButtonLabel('Turn off AI Guard', false);
-    setGuardStatus('watching', 'Watching — hands clear');
-    document.getElementById('guardNote').textContent='Running fully offline in this browser tab. It only watches while this tab is open and visible in front of you.';
-    guardTickHandle=setInterval(guardTick, GUARD_TICK_MS);
-  }catch(err){
-    console.error('AI Guard failed to start', err);
-    let msg='Could not start AI Guard.';
-    if(err && err.name==='NotAllowedError') msg='Camera permission was denied. Allow camera access to use AI Guard.';
-    else if(err && err.name==='NotFoundError') msg='No camera was found on this device.';
-    else if(!navigator.onLine) msg='No internet connection — the AI model needs to download once before first use.';
-    else if(err && err.message) msg='Could not start AI Guard: '+err.message;
-    else{
-      let detail='';
-      try{ detail=JSON.stringify(err); }catch(e){}
-      if(!detail || detail==='{}') detail=String(err);
-      msg='Could not start AI Guard — unrecognized error: '+detail;
-    }
-    setGuardStatus(null, msg);
-    setGuardButtonLabel('👁️ Enable AI Guard', false);
-    stopGuardCamera();
-  }
-  guardBusy=false;
-}
-
-function stopGuardCamera(){
-  if(guardStream){ guardStream.getTracks().forEach(t=>t.stop()); guardStream=null; }
-  document.getElementById('guardPreviewWrap').classList.remove('active');
-}
-function stopGuard(statusText){
-  guardActive=false;
-  if(guardTickHandle){ clearInterval(guardTickHandle); guardTickHandle=null; }
-  stopGuardCamera();
-  guardHardStopActive=false;
-  document.getElementById('stopOverlay').classList.remove('active');
-  setGuardButtonLabel('👁️ Enable AI Guard', false);
-  setGuardStatus(null, statusText||'AI Guard is off');
+function showError(msg){
+  document.getElementById('errorBox').style.display='block';
+  document.getElementById('errorBox').textContent=msg;
+  setStatus('off', 'Not watching');
 }
 
 function withTimeout(promise, ms, timeoutMessage){
@@ -822,53 +108,69 @@ function withTimeout(promise, ms, timeoutMessage){
     promise.then(v=>{ clearTimeout(t); resolve(v); }, e=>{ clearTimeout(t); reject(e); });
   });
 }
-async function loadGuardModels(){
-  const visionMod=await import(GUARD_VISION_BASE+'/vision_bundle.mjs');
+
+async function loadModels(){
+  const visionMod=await import(VISION_BASE+'/vision_bundle.mjs');
   const {FilesetResolver, HandLandmarker, FaceDetector}=visionMod;
-  const vision=await FilesetResolver.forVisionTasks(GUARD_VISION_BASE+'/wasm');
-  // Defaults (~0.5) are tuned for an open, palm-visible hand. A hand actually
-  // gripping hair is self-occluded and fist-like -- exactly the pose the
-  // model is least confident about, right when detecting it matters most.
-  // Lowered thresholds trade a few more false positives for not missing that.
+  const vision=await FilesetResolver.forVisionTasks(VISION_BASE+'/wasm');
   const handOpts={
-    baseOptions:{modelAssetPath:GUARD_HAND_MODEL},
+    baseOptions:{modelAssetPath:HAND_MODEL},
     numHands:2, runningMode:'VIDEO',
-    minHandDetectionConfidence:0.3,
-    minHandPresenceConfidence:0.3,
-    minTrackingConfidence:0.3
+    minHandDetectionConfidence:0.3, minHandPresenceConfidence:0.3, minTrackingConfidence:0.3
   };
-  const faceOpts={ baseOptions:{modelAssetPath:GUARD_FACE_MODEL}, runningMode:'VIDEO' };
+  const faceOpts={ baseOptions:{modelAssetPath:FACE_MODEL}, runningMode:'VIDEO' };
   try{
-    guardHandLandmarker=await HandLandmarker.createFromOptions(vision, {...handOpts, baseOptions:{...handOpts.baseOptions, delegate:'GPU'}});
-    guardFaceDetector=await FaceDetector.createFromOptions(vision, {...faceOpts, baseOptions:{...faceOpts.baseOptions, delegate:'GPU'}});
+    handLandmarker=await HandLandmarker.createFromOptions(vision, {...handOpts, baseOptions:{...handOpts.baseOptions, delegate:'GPU'}});
+    faceDetector=await FaceDetector.createFromOptions(vision, {...faceOpts, baseOptions:{...faceOpts.baseOptions, delegate:'GPU'}});
   }catch(gpuErr){
-    guardHandLandmarker=await HandLandmarker.createFromOptions(vision, {...handOpts, baseOptions:{...handOpts.baseOptions, delegate:'CPU'}});
-    guardFaceDetector=await FaceDetector.createFromOptions(vision, {...faceOpts, baseOptions:{...faceOpts.baseOptions, delegate:'CPU'}});
+    handLandmarker=await HandLandmarker.createFromOptions(vision, {...handOpts, baseOptions:{...handOpts.baseOptions, delegate:'CPU'}});
+    faceDetector=await FaceDetector.createFromOptions(vision, {...faceOpts, baseOptions:{...faceOpts.baseOptions, delegate:'CPU'}});
   }
 }
 
-function guardTick(){
-  if(!guardActive) return;
-  const video=document.getElementById('guardVideo');
+async function start(){
+  setStatus(null, 'Requesting camera…');
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}, audio:false});
+    const video=document.getElementById('video');
+    video.srcObject=stream;
+    await video.play();
+    document.getElementById('previewWrap').classList.add('active');
+
+    setStatus(null, 'Downloading on-device model…');
+    await withTimeout(loadModels(), 120000, 'Model download took too long. Check your connection and reload.');
+
+    setStatus('watching', 'Watching');
+    tickHandle=setInterval(tick, TICK_MS);
+  }catch(err){
+    console.error('Trichyguard failed to start', err);
+    let msg='Could not start.';
+    if(err && err.name==='NotAllowedError') msg='Camera permission was denied.';
+    else if(err && err.name==='NotFoundError') msg='No camera was found on this device.';
+    else if(err && err.message) msg=err.message;
+    showError(msg);
+  }
+}
+
+function tick(){
+  const video=document.getElementById('video');
   if(video.readyState<2) return;
   const now=performance.now();
-  const overlayOpen=document.getElementById('interventionOverlay').classList.contains('active')
-    || document.getElementById('quickPullOverlay').classList.contains('active');
 
   let faceResult, handResult;
   try{
-    faceResult=guardFaceDetector.detectForVideo(video, now);
-    handResult=guardHandLandmarker.detectForVideo(video, now);
+    faceResult=faceDetector.detectForVideo(video, now);
+    handResult=handLandmarker.detectForVideo(video, now);
   }catch(e){ return; }
 
-  const canvas=document.getElementById('guardOverlayCanvas');
+  const canvas=document.getElementById('overlay');
   canvas.width=video.videoWidth; canvas.height=video.videoHeight;
   const ctx=canvas.getContext('2d');
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   if(!faceResult.detections.length){
-    if(!overlayOpen) setGuardStatus('watching','Watching — no face in frame');
-    guardNearCount=0;
+    if(!hardStopActive) setStatus('watching','Watching — no face in frame');
+    nearCount=0;
     return;
   }
   const box=faceResult.detections[0].boundingBox;
@@ -894,37 +196,33 @@ function guardTick(){
     });
   });
 
-  if(overlayOpen){ guardNearCount=0; return; }
-
-  if(guardHardStopActive) sampleGuardEpisode(handResult, canvas);
-
   if(handInZone){
-    guardNearCount++;
-    guardAwayTicks=0;
-    if(guardHardStopActive){
+    nearCount++;
+    awayTicks=0;
+    if(hardStopActive){
       resetStopOverlayToLocked();
     }else{
-      setGuardStatus('alert', '⚠️ Hand near hair');
-      if(guardNearCount>=GUARD_ALERT_FRAMES && Date.now()>=guardPostClearCooldownUntil){
-        guardNearCount=0;
+      setStatus('alert', 'Hand near hair');
+      if(nearCount>=ALERT_FRAMES && Date.now()>=postClearCooldownUntil){
+        nearCount=0;
         activateHardStop();
       }
     }
   }else{
-    guardNearCount=0;
-    if(guardHardStopActive){
-      guardAwayTicks++;
-      updateStopOverlayProgress(guardAwayTicks);
-      if(guardAwayTicks>=GUARD_CLEAR_TICKS){
+    nearCount=0;
+    if(hardStopActive){
+      awayTicks++;
+      updateStopOverlayProgress(awayTicks);
+      if(awayTicks>=CLEAR_TICKS){
         clearHardStop();
       }
     }else{
-      setGuardStatus('watching', 'Watching — hands clear');
+      setStatus('watching', 'Watching');
     }
   }
 }
 
-function guardBeep(){
+function beep(){
   try{
     const ctx=new (window.AudioContext||window.webkitAudioContext)();
     const o=ctx.createOscillator(), g=ctx.createGain();
@@ -940,94 +238,39 @@ function resetStopOverlayToLocked(){
   document.getElementById('stopRing').classList.remove('clearing');
   document.getElementById('stopRing').textContent='✋';
   document.getElementById('stopTitle').textContent='Hand caught near your hair';
-  document.getElementById('stopSub').textContent="This won't lift until your hand has been away for a couple of seconds. Just move it — that's all this needs.";
-  setGuardStatus('alert', '🔒 Locked — hand near hair');
+  document.getElementById('stopSub').textContent="This won't lift until your hand has been away for a couple of seconds.";
+  setStatus('alert', 'Locked');
 }
 function updateStopOverlayProgress(ticks){
-  const remainingMs=Math.max(0, (GUARD_CLEAR_TICKS-ticks)*GUARD_TICK_MS);
+  const remainingMs=Math.max(0, (CLEAR_TICKS-ticks)*TICK_MS);
   document.getElementById('stopRing').classList.add('clearing');
   document.getElementById('stopRing').textContent='✓';
   document.getElementById('stopTitle').textContent='Hand is clear — hold it there';
   document.getElementById('stopSub').textContent='Unlocking in '+(remainingMs/1000).toFixed(1)+'s if it stays away…';
-  setGuardStatus('alert', '🔓 Clearing…');
+  setStatus('alert', 'Clearing…');
 }
-const PINCH_CLOSE_RATIO=0.4;
-const PULL_MIN_PINCH_FRAMES=2;
-let guardEpisode=null;
-
-function sampleGuardEpisode(handResult, canvas){
-  const lm=(handResult.landmarks||[])[0];
-  if(!lm || !guardEpisode) return;
-  const toPx=p=>({x:p.x*canvas.width, y:p.y*canvas.height});
-  const wrist=toPx(lm[0]), mcp=toPx(lm[9]), thumb=toPx(lm[4]), index=toPx(lm[8]);
-  const handSpan=Math.hypot(mcp.x-wrist.x, mcp.y-wrist.y) || 1;
-  const pinchRatio=Math.hypot(index.x-thumb.x, index.y-thumb.y)/handSpan;
-  guardEpisode.minPinchRatio=Math.min(guardEpisode.minPinchRatio, pinchRatio);
-  if(pinchRatio<PINCH_CLOSE_RATIO) guardEpisode.pinchClosedFrames++;
-  guardEpisode.sampleCount++;
-}
-function classifyGuardEpisode(ep){
-  if(!ep || ep.sampleCount===0) return 'resisted';
-  return ep.pinchClosedFrames>=PULL_MIN_PINCH_FRAMES ? 'pulled' : 'resisted';
-}
-
 function activateHardStop(){
-  guardHardStopActive=true;
-  guardAwayTicks=0;
-  guardEpisode={minPinchRatio:Infinity, pinchClosedFrames:0, sampleCount:0};
+  hardStopActive=true;
+  awayTicks=0;
   resetStopOverlayToLocked();
   document.getElementById('stopOverlay').classList.add('active');
-  guardBeep();
+  beep();
   if(navigator.vibrate) navigator.vibrate([150,80,150,80,150]);
   if(!document.fullscreenElement && document.documentElement.requestFullscreen){
     document.documentElement.requestFullscreen().catch(()=>{});
   }
-  // Only present when running as the Electron app (see trichyguard-app),
-  // not the plain browser version -- a real fullscreen/focus request with
-  // no gesture restriction, which a browser page can't do on its own.
+  // Only present when running as the Electron app (see trichyguard-app), not
+  // the plain browser version -- a real fullscreen/focus request with no
+  // gesture restriction, which a browser page can't do on its own.
   if(window.trichyguardNative) window.trichyguardNative.lock();
 }
-let guardCatchTs=null, guardConfirmTimeout=null;
 function clearHardStop(){
-  guardHardStopActive=false;
-  guardAwayTicks=0;
-  guardPostClearCooldownUntil=Date.now()+GUARD_POST_CLEAR_COOLDOWN_MS;
+  hardStopActive=false;
+  awayTicks=0;
+  postClearCooldownUntil=Date.now()+POST_CLEAR_COOLDOWN_MS;
   document.getElementById('stopOverlay').classList.remove('active');
-  setGuardStatus('watching', 'Watching — hands clear');
+  setStatus('watching', 'Watching');
   if(window.trichyguardNative) window.trichyguardNative.unlock();
-
-  const outcome=classifyGuardEpisode(guardEpisode);
-  guardEpisode=null;
-  guardCatchTs=Date.now();
-  state.events.push({ts:guardCatchTs, type:outcome, trigger:'Caught by AI Guard', note:''});
-  saveData();
-  renderHome();
-
-  const banner=document.getElementById('guardConfirmBanner');
-  const opposite=outcome==='pulled' ? 'resisted' : 'pulled';
-  document.getElementById('guardConfirmText').textContent =
-    outcome==='pulled'
-      ? "AI Guard saw your fingers close around a strand and logged this as pulled."
-      : "AI Guard didn't see your fingers close into a pinch, so this is logged as resisted.";
-  const flipBtn=document.getElementById('guardFlipBtn');
-  flipBtn.textContent = opposite==='pulled' ? 'Actually, I pulled' : 'Actually, I resisted';
-  flipBtn.onclick=()=>flipGuardOutcome(opposite);
-  banner.classList.add('show');
-  clearTimeout(guardConfirmTimeout);
-  guardConfirmTimeout=setTimeout(()=>{ banner.classList.remove('show'); }, 12000);
-}
-function flipGuardOutcome(correctedOutcome){
-  const ev=state.events.find(e=>e.ts===guardCatchTs);
-  if(ev) ev.type=correctedOutcome;
-  saveData();
-  renderHome();
-  document.getElementById('guardConfirmBanner').classList.remove('show');
-  clearTimeout(guardConfirmTimeout);
-  showToast('Fixed — logged as '+correctedOutcome+'.');
-}
-function dismissGuardConfirm(){
-  document.getElementById('guardConfirmBanner').classList.remove('show');
-  clearTimeout(guardConfirmTimeout);
 }
 function handleStopOverlayClick(){
   if(!document.fullscreenElement && document.documentElement.requestFullscreen){
@@ -1035,48 +278,20 @@ function handleStopOverlayClick(){
   }
 }
 window.addEventListener('keydown', e=>{
-  if(guardHardStopActive){ e.preventDefault(); e.stopPropagation(); }
+  if(hardStopActive){ e.preventDefault(); e.stopPropagation(); }
 }, true);
 window.addEventListener('beforeunload', e=>{
-  // Not just during a lock: closing this window is the one thing that
-  // silently switches AI Guard off entirely, no matter how it happens
-  // (accidental click on the app window's own close button, habit, or a
-  // deliberate dodge). This can't stop a determined close -- browsers won't
-  // let any page block navigation outright -- but it forces one extra,
-  // conscious "leave site?" confirmation every single time, rather than
-  // guarding being a single careless click away.
-  if(guardActive || guardHardStopActive){ e.preventDefault(); e.returnValue=''; }
+  e.preventDefault(); e.returnValue='';
 });
 window.addEventListener('contextmenu', e=>{
-  if(guardHardStopActive) e.preventDefault();
-});
-
-document.addEventListener('visibilitychange', ()=>{
-  if(!guardActive) return;
-  if(document.hidden){
-    if(guardTickHandle){ clearInterval(guardTickHandle); guardTickHandle=null; }
-    setGuardStatus(null, 'Paused — tab not in view');
-  }else if(!guardTickHandle){
-    guardTickHandle=setInterval(guardTick, GUARD_TICK_MS);
-    setGuardStatus('watching', 'Watching — hands clear');
-  }
+  if(hardStopActive) e.preventDefault();
 });
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
 }
 
-document.getElementById('switchReminders').classList.toggle('on', !!state.settings.remindersOn);
-document.getElementById('reminderIntervalRow').style.display = state.settings.remindersOn ? 'flex':'none';
-document.getElementById('reminderIntervalInput').value=state.settings.reminderHours||2;
-document.getElementById('reminderIntervalLabel').textContent=(state.settings.reminderHours||2)+' hours';
-
-renderHome();
-
-if(new URLSearchParams(location.search).get('autoguard')==='1'){
-  switchTab('guard');
-  setTimeout(()=>{ toggleGuard(); }, 600);
-}
+start();
 </script>
 </body>
 </html>

@@ -11,53 +11,41 @@ I'm not a therapist and this isn't a clinical product. It's the thing I wished e
 myself first. Putting it here instead of keeping it on my own machine is just in case it's useful
 to someone else dealing with the same thing.
 
-## What it actually does
+## What it does — and that's genuinely all it does
 
-- **AI Guard** — the important part. It watches your webcam using an on-device hand-tracking
-  model (Google's MediaPipe, running entirely in your browser via WebAssembly) and the instant it
-  catches your hand near your hair, it locks the screen full-screen — no close button, no tagging
-  step, nothing to fill in. It only lifts once your hand has been away for a couple of seconds.
-- **Manual urge button** — for the moments you do catch yourself first: names the trigger, walks
-  through a short breathing + competing-response exercise, then asks honestly whether you
-  resisted.
-- **No-judgment pull logging** — if it already happened, log it in one tap. No shame copy, no
-  streak-reset drama.
-- **Streak + stats** — current/best pull-free streak, a 14-day resisted-vs-pulled chart, a
-  time-of-day heatmap, your most common triggers.
-- **Installable** — add it to your home screen on phone or laptop like a native app.
+Open it, and it watches. That's the entire app. No account, no button to press, no settings, no
+history, nothing to configure. It watches your webcam with an on-device hand-tracking model
+(Google's MediaPipe, running entirely in your browser via WebAssembly), and the instant it catches
+your hand near your hair, it locks the screen full-screen — no close button, nothing to fill in,
+nothing to confirm. It only lifts once your hand has been away for a couple of seconds, and then
+it quietly goes back to watching.
 
-There's no account, no sync, and no backend — each device you install it on keeps its own
-independent local data, and that's a deliberate tradeoff, not a missing feature.
+There used to be a streak counter, stats, trigger logging, a manual "I feel an urge" button, a
+journal, export/import. All of it is gone on purpose. The moment this app starts asking you to log
+anything, tag a trigger, or review a chart, it stops being a thing that just protects you and
+starts being one more app demanding attention — exactly the kind of friction that makes a
+compulsive habit easier to keep doing around. So: no logging, because there's no data collected to
+log. No streaks, because there's nothing being tracked. No settings, because there's nothing to
+configure — it's on the moment it's open.
+
+## Two ways to run it
+
+**In a browser tab** — the link above works as-is, no install. The one real limitation: a
+browser page cannot force itself fullscreen or steal focus without a fresh click (deliberate
+browser security policy), so the lock can only ever cover its own tab. If you're working in a
+different window when it catches you, you won't see it.
+
+**As a small desktop app** (what I actually run) — a native wrapper (`trichyguard-app/` in this
+repo, Electron-based) that loads the exact same page, but as its own tiny window instead of a
+browser tab. Because it's a real app and not a webpage, it can do two things a browser can't:
+keep watching at full speed even when the window is hidden in the background, and force itself
+fullscreen and grab focus the instant it catches something — genuinely taking over your screen,
+not just its own small corner. It sits pinned in a corner of your screen, watching, and only
+expands when it needs to. See `trichyguard-app/main.js` for the setup; it's fairly specific to my
+own machine's GPU quirks (documented in the comments there) and Hyprland config, so treat it as a
+reference rather than a drop-in for a different setup.
 
 ## FAQ (the questions I'd ask too)
-
-### Can I make it run in the background, all the time, on my laptop?
-
-Yes, with two catches worth understanding:
-
-1. A browser tab can only watch while it's actually visible on screen — AI Guard deliberately
-   pauses the moment its tab or window is hidden or minimized, rather than pretending to watch
-   when it can't. So "background" here means "a small always-visible window," not "invisible."
-2. To auto-launch it at login as its own small pinned window (Linux/Hyprland example below —
-   adapt the syntax for your own window manager, or just use your OS's "open at login" setting):
-
-   ```
-   # autostart
-   exec-once = your-chromium-browser --app=https://sammynashed.github.io/Trichyguard-AI/?autoguard=1
-
-   # window rule: float it small, pin it to a corner, keep it on every workspace
-   windowrule {
-       match:title = ^(Trichyguard)$
-       float = on
-       size = 360 480
-       move = 90% 5%
-       pin = on
-   }
-   ```
-
-   The `?autoguard=1` flag tells the page to switch to the Guard tab and re-arm it automatically
-   on load — no click needed after the very first time (browsers remember a camera grant
-   per-site, so only that first launch needs you to click Allow).
 
 ### How do I know it's *only* this app using my camera, and not some other site or app?
 
@@ -74,17 +62,18 @@ Three checks, cheapest first:
    works in every Chromium-based browser) and look at the site list. Revoke anything you don't
    recognize or don't remember granting.
 
-Trichyguard itself only asks for the camera the moment you tap "Enable AI Guard" — never before,
-never silently.
+Trichyguard asks for the camera the moment the page loads — that's by design now (there's no
+button left to gate it behind), but it's also the *only* thing that ever happens automatically.
+Nothing else runs, nothing is sent anywhere, without you seeing the camera indicator light up.
 
 ### Where does the video footage go?
 
 Nowhere. There is no upload code in this app — you can verify that yourself, because the entire
-client is one readable `index.html` file with no build step, no bundler, no obfuscation. Every
-video frame is handed to the on-device MediaPipe model, a set of hand/face coordinates comes
-back, and the raw frame is discarded immediately. It's never written to disk, never sent over the
-network, never even kept in memory past that single frame. The live preview you see in the app is
-the *only* place that frame ever exists, and it's gone the instant the next one arrives.
+client is one readable `index.html` file with no build step, no bundler, no obfuscation, and (as
+of now) no storage of any kind either — not even locally. Every video frame is handed to the
+on-device MediaPipe model, a set of hand/face coordinates comes back, and the raw frame is
+discarded immediately. It's never written to disk, never sent over the network, never even kept
+in memory past that single frame.
 
 ## Running it yourself
 
@@ -96,17 +85,18 @@ cd Trichyguard-AI
 python3 -m http.server 8080
 ```
 
-Then open `http://localhost:8080`. Camera access and the "Add to Home Screen" install prompt both
-need it served over http/https, not opened directly as a `file://` path.
+Then open `http://localhost:8080`. Camera access needs it served over http/https, not opened
+directly as a `file://` path.
 
 ## The honest limits
 
-- A browser tab can lock itself against clicks, keys, even closing the tab — but it cannot touch
-  anything at the operating-system level. A global keyboard shortcut bound in your window
-  manager or compositor fires before the page ever sees the keystroke; nothing running at normal
-  user permissions can intercept that, this app included.
-- It only sees anything while its window is open and visible in front of you. Lock your screen,
-  switch away, or close the laptop, and it's blind — same as covering the lens.
+- A browser tab can lock itself against clicks and keys — but it cannot touch anything at the
+  operating-system level. A global keyboard shortcut bound in your window manager or compositor
+  fires before the page ever sees the keystroke; nothing running at normal user permissions can
+  intercept that, this app (browser or desktop version) included.
+- The desktop app keeps watching while its window is hidden, but it still needs the app itself to
+  be running and the camera physically uncovered. It's not a system service and doesn't survive a
+  full quit.
 
 ## Not a replacement for therapy
 

@@ -1,0 +1,14 @@
+{
+  "name": "trichyguard-app",
+  "version": "1.0.0",
+  "description": "Trichyguard AI Guard as a persistent desktop app",
+  "author": "Sammy Nashed",
+  "license": "MIT",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.2.0"
+  }
+}
