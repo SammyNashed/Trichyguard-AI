@@ -823,6 +823,12 @@ async function toggleGuard(){
     else if(err && err.name==='NotFoundError') msg='No camera was found on this device.';
     else if(!navigator.onLine) msg='No internet connection — the AI model needs to download once before first use.';
     else if(err && err.message) msg='Could not start AI Guard: '+err.message;
+    else{
+      let detail='';
+      try{ detail=JSON.stringify(err); }catch(e){}
+      if(!detail || detail==='{}') detail=String(err);
+      msg='Could not start AI Guard — unrecognized error: '+detail;
+    }
     setGuardStatus(null, msg);
     setGuardButtonLabel('👁️ Enable AI Guard', false);
     stopGuardCamera();
