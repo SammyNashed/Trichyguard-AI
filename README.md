@@ -3,14 +3,16 @@
 **[Try it in your browser →](https://sammynashed.github.io/Trichyguard-AI/)** (no install, works
 in 10 seconds — read on for how to run the full version)
 
-I have trichotillomania — I pull my own hair, consciously, and I built this because I wanted
-something that could catch my hand before I was even aware it had moved. Most tools for this rely
-on you noticing the urge first, and by the time I notice, I'm usually already mid-pull. So this one
-doesn't wait for that.
+Most tools for this kind of thing rely on you noticing the urge first — you feel it building, and
+you're supposed to reach for a coping technique before it happens. That's never worked for me. By
+the time I notice, I'm usually already mid-pull; my hand moves before the rest of me catches up.
+So I wanted something that didn't wait for me to notice at all.
 
-I'm not a therapist and this isn't a clinical product. It's the thing I wished existed, built for
-myself first. Putting it here instead of keeping it on my own machine is just in case it's useful
-to someone else dealing with the same thing.
+I have trichotillomania — I pull my own hair, consciously, or at least consciously enough that
+noticing "before" was never really the problem I could solve on my own. This is the thing I built
+because I wished it already existed. I'm not a therapist and this isn't a clinical product, just
+something I made for myself first. Putting it here instead of keeping it on my own machine is in
+case it's useful to someone else dealing with the same thing.
 
 ## What it does
 
