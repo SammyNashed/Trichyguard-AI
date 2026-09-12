@@ -73,6 +73,7 @@ button{font-family:inherit; border:none; cursor:pointer;}
 .feed-item .icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
 .feed-item .icon.resist{background:rgba(74,222,128,.15); color:var(--good);}
 .feed-item .icon.pull{background:rgba(248,113,113,.15); color:var(--bad);}
+.feed-item .icon.unknown{background:rgba(168,165,196,.15); color:var(--sub);}
 .feed-item .main{flex:1; min-width:0;}
 .feed-item .t{color:var(--sub); font-size:.75rem;}
 .feed-item .tag-note{color:var(--sub); font-size:.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
@@ -158,6 +159,19 @@ canvas{width:100%; display:block;}
   box-shadow:0 8px 24px rgba(0,0,0,.3); z-index:200; opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease;
 }
 .toast.show{opacity:1; transform:translateX(-50%) translateY(-8px);}
+
+.confirm-banner{
+  position:fixed; left:16px; right:16px; bottom:88px; max-width:488px; margin:0 auto;
+  background:var(--card2); border-radius:18px; padding:16px 18px; box-shadow:0 10px 30px rgba(0,0,0,.35);
+  z-index:150; display:none;
+}
+.confirm-banner.show{display:block;}
+.confirm-banner .q{font-weight:700; font-size:.95rem; margin-bottom:12px;}
+.confirm-banner .row{display:flex; gap:10px;}
+.confirm-banner button{flex:1; padding:12px; border-radius:12px; font-weight:700; font-size:.88rem;}
+.confirm-banner .btn-yes-pulled{background:rgba(248,113,113,.15); color:var(--bad);}
+.confirm-banner .btn-no-resisted{background:rgba(74,222,128,.15); color:var(--good);}
+.confirm-banner .dismiss{position:absolute; top:10px; right:12px; background:none; color:var(--sub); font-size:1rem; padding:4px;}
 
 .guard-hero{background:linear-gradient(160deg,var(--card),var(--card2)); border-radius:calc(var(--radius) + 6px); padding:24px; margin-bottom:16px;}
 .guard-hero .l{color:var(--accent2); font-weight:700; font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px;}
@@ -363,6 +377,15 @@ canvas{width:100%; display:block;}
 
 <div class="toast" id="toast"></div>
 
+<div class="confirm-banner" id="guardConfirmBanner" style="position:relative;">
+  <button class="dismiss" onclick="dismissGuardConfirm()">✕</button>
+  <div class="q">AI Guard caught your hand near your hair — what actually happened?</div>
+  <div class="row">
+    <button class="btn-no-resisted" onclick="confirmGuardOutcome('resisted')">I resisted</button>
+    <button class="btn-yes-pulled" onclick="confirmGuardOutcome('pulled')">I pulled</button>
+  </div>
+</div>
+
 <div class="stop-overlay" id="stopOverlay" onclick="handleStopOverlayClick()">
   <div class="stop-ring" id="stopRing">✋</div>
   <div class="stop-title" id="stopTitle">Hand caught near your hair</div>
@@ -448,10 +471,9 @@ function renderHome(){
     feed.innerHTML='<div class="empty-note">Nothing logged yet. When an urge hits, tap the button above.</div>';
   }else{
     feed.innerHTML=recent.map(e=>{
-      const isResist = e.type==='resisted';
-      const icon = isResist ? '✅' : '·';
-      const label = isResist ? 'Resisted an urge' : 'Logged a pull';
-      const cls = isResist ? 'resist':'pull';
+      let icon='·', label='Logged a pull', cls='pull';
+      if(e.type==='resisted'){ icon='✅'; label='Resisted an urge'; cls='resist'; }
+      else if(e.type==='guard_catch'){ icon='❓'; label='AI Guard caught your hand — outcome unconfirmed'; cls='unknown'; }
       const tag = e.trigger ? e.trigger : '';
       return `<div class="feed-item"><div class="icon ${cls}">${icon}</div><div class="main"><div>${label}</div><div class="t">${fmtRelative(e.ts)}</div></div><div class="tag-note">${tag}</div></div>`;
     }).join('');
@@ -939,16 +961,34 @@ function activateHardStop(){
     document.documentElement.requestFullscreen().catch(()=>{});
   }
 }
+let guardCatchTs=null, guardConfirmTimeout=null;
 function clearHardStop(){
   guardHardStopActive=false;
   guardAwayTicks=0;
   guardPostClearCooldownUntil=Date.now()+GUARD_POST_CLEAR_COOLDOWN_MS;
   document.getElementById('stopOverlay').classList.remove('active');
   setGuardStatus('watching', 'Watching — hands clear');
-  state.events.push({ts:Date.now(), type:'resisted', trigger:'Caught by AI Guard', note:''});
+  guardCatchTs=Date.now();
+  state.events.push({ts:guardCatchTs, type:'guard_catch', trigger:'Caught by AI Guard', note:''});
   saveData();
   renderHome();
-  showToast('Logged automatically — nice.');
+  const banner=document.getElementById('guardConfirmBanner');
+  banner.classList.add('show');
+  clearTimeout(guardConfirmTimeout);
+  guardConfirmTimeout=setTimeout(()=>{ banner.classList.remove('show'); }, 20000);
+}
+function confirmGuardOutcome(outcome){
+  const ev=state.events.find(e=>e.ts===guardCatchTs && e.type==='guard_catch');
+  if(ev) ev.type=outcome;
+  saveData();
+  renderHome();
+  document.getElementById('guardConfirmBanner').classList.remove('show');
+  clearTimeout(guardConfirmTimeout);
+  showToast(outcome==='resisted' ? "Logged — nice." : "Logged. Tomorrow's a fresh shot at it.");
+}
+function dismissGuardConfirm(){
+  document.getElementById('guardConfirmBanner').classList.remove('show');
+  clearTimeout(guardConfirmTimeout);
 }
 function handleStopOverlayClick(){
   if(!document.fullscreenElement && document.documentElement.requestFullscreen){
