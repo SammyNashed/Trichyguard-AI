@@ -1033,7 +1033,14 @@ window.addEventListener('keydown', e=>{
   if(guardHardStopActive){ e.preventDefault(); e.stopPropagation(); }
 }, true);
 window.addEventListener('beforeunload', e=>{
-  if(guardHardStopActive){ e.preventDefault(); e.returnValue=''; }
+  // Not just during a lock: closing this window is the one thing that
+  // silently switches AI Guard off entirely, no matter how it happens
+  // (accidental click on the app window's own close button, habit, or a
+  // deliberate dodge). This can't stop a determined close -- browsers won't
+  // let any page block navigation outright -- but it forces one extra,
+  // conscious "leave site?" confirmation every single time, rather than
+  // guarding being a single careless click away.
+  if(guardActive || guardHardStopActive){ e.preventDefault(); e.returnValue=''; }
 });
 window.addEventListener('contextmenu', e=>{
   if(guardHardStopActive) e.preventDefault();
