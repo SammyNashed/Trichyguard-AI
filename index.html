@@ -982,6 +982,10 @@ function activateHardStop(){
   if(!document.fullscreenElement && document.documentElement.requestFullscreen){
     document.documentElement.requestFullscreen().catch(()=>{});
   }
+  // Only present when running as the Electron app (see trichyguard-app),
+  // not the plain browser version -- a real fullscreen/focus request with
+  // no gesture restriction, which a browser page can't do on its own.
+  if(window.trichyguardNative) window.trichyguardNative.lock();
 }
 let guardCatchTs=null, guardConfirmTimeout=null;
 function clearHardStop(){
@@ -990,6 +994,7 @@ function clearHardStop(){
   guardPostClearCooldownUntil=Date.now()+GUARD_POST_CLEAR_COOLDOWN_MS;
   document.getElementById('stopOverlay').classList.remove('active');
   setGuardStatus('watching', 'Watching — hands clear');
+  if(window.trichyguardNative) window.trichyguardNative.unlock();
 
   const outcome=classifyGuardEpisode(guardEpisode);
   guardEpisode=null;
