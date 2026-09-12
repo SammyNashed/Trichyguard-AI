@@ -379,10 +379,9 @@ canvas{width:100%; display:block;}
 
 <div class="confirm-banner" id="guardConfirmBanner" style="position:relative;">
   <button class="dismiss" onclick="dismissGuardConfirm()">✕</button>
-  <div class="q">AI Guard caught your hand near your hair — what actually happened?</div>
+  <div class="q" id="guardConfirmText">AI Guard logged this catch.</div>
   <div class="row">
-    <button class="btn-no-resisted" onclick="confirmGuardOutcome('resisted')">I resisted</button>
-    <button class="btn-yes-pulled" onclick="confirmGuardOutcome('pulled')">I pulled</button>
+    <button class="btn-yes-pulled" id="guardFlipBtn" onclick="">Wrong — fix it</button>
   </div>
 </div>
 
@@ -897,6 +896,8 @@ function guardTick(){
 
   if(overlayOpen){ guardNearCount=0; return; }
 
+  if(guardHardStopActive) sampleGuardEpisode(handResult, canvas);
+
   if(handInZone){
     guardNearCount++;
     guardAwayTicks=0;
@@ -950,9 +951,30 @@ function updateStopOverlayProgress(ticks){
   document.getElementById('stopSub').textContent='Unlocking in '+(remainingMs/1000).toFixed(1)+'s if it stays away…';
   setGuardStatus('alert', '🔓 Clearing…');
 }
+const PINCH_CLOSE_RATIO=0.4;
+const PULL_MIN_PINCH_FRAMES=2;
+let guardEpisode=null;
+
+function sampleGuardEpisode(handResult, canvas){
+  const lm=(handResult.landmarks||[])[0];
+  if(!lm || !guardEpisode) return;
+  const toPx=p=>({x:p.x*canvas.width, y:p.y*canvas.height});
+  const wrist=toPx(lm[0]), mcp=toPx(lm[9]), thumb=toPx(lm[4]), index=toPx(lm[8]);
+  const handSpan=Math.hypot(mcp.x-wrist.x, mcp.y-wrist.y) || 1;
+  const pinchRatio=Math.hypot(index.x-thumb.x, index.y-thumb.y)/handSpan;
+  guardEpisode.minPinchRatio=Math.min(guardEpisode.minPinchRatio, pinchRatio);
+  if(pinchRatio<PINCH_CLOSE_RATIO) guardEpisode.pinchClosedFrames++;
+  guardEpisode.sampleCount++;
+}
+function classifyGuardEpisode(ep){
+  if(!ep || ep.sampleCount===0) return 'resisted';
+  return ep.pinchClosedFrames>=PULL_MIN_PINCH_FRAMES ? 'pulled' : 'resisted';
+}
+
 function activateHardStop(){
   guardHardStopActive=true;
   guardAwayTicks=0;
+  guardEpisode={minPinchRatio:Infinity, pinchClosedFrames:0, sampleCount:0};
   resetStopOverlayToLocked();
   document.getElementById('stopOverlay').classList.add('active');
   guardBeep();
@@ -968,23 +990,35 @@ function clearHardStop(){
   guardPostClearCooldownUntil=Date.now()+GUARD_POST_CLEAR_COOLDOWN_MS;
   document.getElementById('stopOverlay').classList.remove('active');
   setGuardStatus('watching', 'Watching — hands clear');
+
+  const outcome=classifyGuardEpisode(guardEpisode);
+  guardEpisode=null;
   guardCatchTs=Date.now();
-  state.events.push({ts:guardCatchTs, type:'guard_catch', trigger:'Caught by AI Guard', note:''});
+  state.events.push({ts:guardCatchTs, type:outcome, trigger:'Caught by AI Guard', note:''});
   saveData();
   renderHome();
+
   const banner=document.getElementById('guardConfirmBanner');
+  const opposite=outcome==='pulled' ? 'resisted' : 'pulled';
+  document.getElementById('guardConfirmText').textContent =
+    outcome==='pulled'
+      ? "AI Guard saw your fingers close around a strand and logged this as pulled."
+      : "AI Guard didn't see your fingers close into a pinch, so this is logged as resisted.";
+  const flipBtn=document.getElementById('guardFlipBtn');
+  flipBtn.textContent = opposite==='pulled' ? 'Actually, I pulled' : 'Actually, I resisted';
+  flipBtn.onclick=()=>flipGuardOutcome(opposite);
   banner.classList.add('show');
   clearTimeout(guardConfirmTimeout);
-  guardConfirmTimeout=setTimeout(()=>{ banner.classList.remove('show'); }, 20000);
+  guardConfirmTimeout=setTimeout(()=>{ banner.classList.remove('show'); }, 12000);
 }
-function confirmGuardOutcome(outcome){
-  const ev=state.events.find(e=>e.ts===guardCatchTs && e.type==='guard_catch');
-  if(ev) ev.type=outcome;
+function flipGuardOutcome(correctedOutcome){
+  const ev=state.events.find(e=>e.ts===guardCatchTs);
+  if(ev) ev.type=correctedOutcome;
   saveData();
   renderHome();
   document.getElementById('guardConfirmBanner').classList.remove('show');
   clearTimeout(guardConfirmTimeout);
-  showToast(outcome==='resisted' ? "Logged — nice." : "Logged. Tomorrow's a fresh shot at it.");
+  showToast('Fixed — logged as '+correctedOutcome+'.');
 }
 function dismissGuardConfirm(){
   document.getElementById('guardConfirmBanner').classList.remove('show');
