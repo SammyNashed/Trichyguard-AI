@@ -1,4 +1,4 @@
-const CACHE='trichyguard-v2';
+const CACHE='trichyguard-v3';
 const ASSETS=['./','./index.html','./manifest.json','./icons/icon-192.png','./icons/icon-512.png'];
 
 self.addEventListener('install', e=>{
@@ -14,10 +14,10 @@ self.addEventListener('activate', e=>{
 self.addEventListener('fetch', e=>{
   if(new URL(e.request.url).origin !== self.location.origin) return;
   e.respondWith(
-    caches.match(e.request).then(cached=>cached || fetch(e.request).then(res=>{
+    fetch(e.request).then(res=>{
       const copy=res.clone();
       caches.open(CACHE).then(c=>c.put(e.request, copy));
       return res;
-    }).catch(()=>cached))
+    }).catch(()=>caches.match(e.request))
   );
 });
