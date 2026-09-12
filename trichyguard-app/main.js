@@ -1,13 +1,18 @@
 const { app, BrowserWindow, Tray, Menu, session, ipcMain } = require('electron');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const HYPR_CLASS_SELECTOR = 'class:^(trichyguard-app)$';
-function hypr(cmd) {
+// execFileSync, not execSync: the class selector's parentheses are literal
+// regex syntax for hyprctl, but execSync runs through `/bin/sh -c`, which
+// tries to interpret them as shell syntax and fails with a parse error on
+// every single call. execFileSync passes args directly with no shell in
+// between, so they reach hyprctl exactly as written.
+function hypr(...args) {
   try {
-    execSync(`hyprctl ${cmd}`);
+    execFileSync('hyprctl', args);
   } catch (e) {
-    console.log('hyprctl command failed:', cmd, e.message);
+    console.log('hyprctl command failed:', args.join(' '), e.message);
   }
 }
 
@@ -28,7 +33,7 @@ function hypr(cmd) {
 // ~23% rather than climbing.
 app.commandLine.appendSwitch('disable-gpu-compositing');
 
-const APP_URL = 'https://sammynashed.github.io/Trichyguard-AI/?autoguard=1';
+const APP_URL = 'https://sammynashed.github.io/Trichyguard-AI/';
 const PINNED_SIZE = { width: 360, height: 480 };
 
 let mainWindow = null;
@@ -104,12 +109,12 @@ function createWindow() {
 function lockToFullScreen() {
   if (!mainWindow) return;
   try {
-    const active = JSON.parse(execSync('hyprctl activeworkspace -j').toString());
-    hypr(`dispatch movetoworkspacesilent ${active.id},${HYPR_CLASS_SELECTOR}`);
+    const active = JSON.parse(execFileSync('hyprctl', ['activeworkspace', '-j']).toString());
+    hypr('dispatch', 'movetoworkspacesilent', `${active.id},${HYPR_CLASS_SELECTOR}`);
   } catch (e) {
     console.log('could not read active workspace:', e.message);
   }
-  hypr(`dispatch focuswindow ${HYPR_CLASS_SELECTOR}`);
+  hypr('dispatch', 'focuswindow', HYPR_CLASS_SELECTOR);
   mainWindow.setAlwaysOnTop(true, 'screen-saver');
   mainWindow.show();
   mainWindow.setFullScreen(true);
@@ -125,13 +130,13 @@ function unlockFromFullScreen() {
     // actually still has this window unpinned (the auto-unpin from going
     // fullscreen), so this can't accidentally un-pin an already-pinned
     // window on some other code path.
-    const clients = JSON.parse(execSync('hyprctl clients -j').toString());
+    const clients = JSON.parse(execFileSync('hyprctl', ['clients', '-j']).toString());
     const win = clients.find((c) => c.class === 'trichyguard-app');
-    if (win && !win.pinned) hypr(`dispatch pin ${HYPR_CLASS_SELECTOR}`);
+    if (win && !win.pinned) hypr('dispatch', 'pin', HYPR_CLASS_SELECTOR);
   } catch (e) {
     console.log('could not verify pin state:', e.message);
   }
-  hypr(`dispatch movewindowpixel exact 1156 57,${HYPR_CLASS_SELECTOR}`);
+  hypr('dispatch', 'movewindowpixel', `exact 1156 57,${HYPR_CLASS_SELECTOR}`);
 }
 
 ipcMain.on('trichyguard-lock', lockToFullScreen);
