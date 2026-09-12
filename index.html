@@ -826,24 +826,24 @@ async function loadGuardModels(){
   const visionMod=await import(GUARD_VISION_BASE+'/vision_bundle.mjs');
   const {FilesetResolver, HandLandmarker, FaceDetector}=visionMod;
   const vision=await FilesetResolver.forVisionTasks(GUARD_VISION_BASE+'/wasm');
+  // Defaults (~0.5) are tuned for an open, palm-visible hand. A hand actually
+  // gripping hair is self-occluded and fist-like -- exactly the pose the
+  // model is least confident about, right when detecting it matters most.
+  // Lowered thresholds trade a few more false positives for not missing that.
+  const handOpts={
+    baseOptions:{modelAssetPath:GUARD_HAND_MODEL},
+    numHands:2, runningMode:'VIDEO',
+    minHandDetectionConfidence:0.3,
+    minHandPresenceConfidence:0.3,
+    minTrackingConfidence:0.3
+  };
+  const faceOpts={ baseOptions:{modelAssetPath:GUARD_FACE_MODEL}, runningMode:'VIDEO' };
   try{
-    guardHandLandmarker=await HandLandmarker.createFromOptions(vision, {
-      baseOptions:{modelAssetPath:GUARD_HAND_MODEL, delegate:'GPU'},
-      numHands:2, runningMode:'VIDEO'
-    });
-    guardFaceDetector=await FaceDetector.createFromOptions(vision, {
-      baseOptions:{modelAssetPath:GUARD_FACE_MODEL, delegate:'GPU'},
-      runningMode:'VIDEO'
-    });
+    guardHandLandmarker=await HandLandmarker.createFromOptions(vision, {...handOpts, baseOptions:{...handOpts.baseOptions, delegate:'GPU'}});
+    guardFaceDetector=await FaceDetector.createFromOptions(vision, {...faceOpts, baseOptions:{...faceOpts.baseOptions, delegate:'GPU'}});
   }catch(gpuErr){
-    guardHandLandmarker=await HandLandmarker.createFromOptions(vision, {
-      baseOptions:{modelAssetPath:GUARD_HAND_MODEL, delegate:'CPU'},
-      numHands:2, runningMode:'VIDEO'
-    });
-    guardFaceDetector=await FaceDetector.createFromOptions(vision, {
-      baseOptions:{modelAssetPath:GUARD_FACE_MODEL, delegate:'CPU'},
-      runningMode:'VIDEO'
-    });
+    guardHandLandmarker=await HandLandmarker.createFromOptions(vision, {...handOpts, baseOptions:{...handOpts.baseOptions, delegate:'CPU'}});
+    guardFaceDetector=await FaceDetector.createFromOptions(vision, {...faceOpts, baseOptions:{...faceOpts.baseOptions, delegate:'CPU'}});
   }
 }
 
