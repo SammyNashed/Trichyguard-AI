@@ -2,23 +2,21 @@
 
 **[Open the app →](https://sammynashed.github.io/Trichyguard-AI/)**
 
-I have trichotillomania. I pull my own hair, consciously, and I've known the name for it for
-years but kept forgetting it — that's genuinely how this repo got its name, back when it was
-just an empty placeholder for "someday I'll build something about this." This is that something.
+I have trichotillomania — I pull my own hair, consciously, and I built this because I wanted
+something that could catch my hand before I was even aware it had moved. Most tools for this rely
+on you noticing the urge first, and by the time I notice, I'm usually already mid-pull. So this
+one doesn't wait for that.
 
-I'm not a therapist and this isn't a clinical product. It's the tool I wished existed while I was
-sitting there mid-pull, wishing something had stopped me two seconds earlier. I built it for
-myself first. If it helps anyone else who deals with this, that's the whole point of putting it
-here instead of keeping it on my own machine.
+I'm not a therapist and this isn't a clinical product. It's the thing I wished existed, built for
+myself first. Putting it here instead of keeping it on my own machine is just in case it's useful
+to someone else dealing with the same thing.
 
 ## What it actually does
 
 - **AI Guard** — the important part. It watches your webcam using an on-device hand-tracking
   model (Google's MediaPipe, running entirely in your browser via WebAssembly) and the instant it
-  catches your hand near your hair, it locks the screen full-screen, no close button, no tagging
+  catches your hand near your hair, it locks the screen full-screen — no close button, no tagging
   step, nothing to fill in. It only lifts once your hand has been away for a couple of seconds.
-  I built it this way on purpose: by the time I'm aware enough to tap a button, I'm usually
-  already mid-pull. This catches it before that.
 - **Manual urge button** — for the moments you do catch yourself first: names the trigger, walks
   through a short breathing + competing-response exercise, then asks honestly whether you
   resisted.
@@ -26,8 +24,10 @@ here instead of keeping it on my own machine.
   streak-reset drama.
 - **Streak + stats** — current/best pull-free streak, a 14-day resisted-vs-pulled chart, a
   time-of-day heatmap, your most common triggers.
-- **Installable** — add it to your home screen on phone or laptop like a native app. Scan the QR
-  code in Settings from your phone to grab the link instantly.
+- **Installable** — add it to your home screen on phone or laptop like a native app.
+
+There's no account, no sync, and no backend — each device you install it on keeps its own
+independent local data, and that's a deliberate tradeoff, not a missing feature.
 
 ## FAQ (the questions I'd ask too)
 
@@ -38,8 +38,8 @@ Yes, with two catches worth understanding:
 1. A browser tab can only watch while it's actually visible on screen — AI Guard deliberately
    pauses the moment its tab or window is hidden or minimized, rather than pretending to watch
    when it can't. So "background" here means "a small always-visible window," not "invisible."
-2. To auto-launch it at login as its own small pinned window (Linux/Hyprland example, adapt the
-   syntax for your own WM or just use your OS's own "open at login" setting):
+2. To auto-launch it at login as its own small pinned window (Linux/Hyprland example below —
+   adapt the syntax for your own window manager, or just use your OS's "open at login" setting):
 
    ```
    # autostart
@@ -86,13 +86,6 @@ back, and the raw frame is discarded immediately. It's never written to disk, ne
 network, never even kept in memory past that single frame. The live preview you see in the app is
 the *only* place that frame ever exists, and it's gone the instant the next one arrives.
 
-### Does my data sync between my laptop and my phone?
-
-No — and that's deliberate, because syncing would mean a server, and a server is exactly the
-thing this app refuses to have. Each device keeps its own local data. To move it, use **Export**
-on one device and **Import** on the other, from Settings — it's a plain `.json` file, yours to
-keep or inspect.
-
 ## Running it yourself
 
 Static site, no build step, no dependencies.
@@ -123,5 +116,4 @@ path for BFRBs — the TLC Foundation for BFRBs is a well-known place to find on
 
 ## License
 
-MIT — use it, fork it, adapt it for the specific thing you're fighting. If it helps you even a
-little, it did its job.
+MIT — see [LICENSE](LICENSE). Use it, fork it, adapt it for the specific thing you're fighting.
