@@ -89,6 +89,8 @@ const POST_CLEAR_COOLDOWN_MS=1000;
 let handLandmarker=null, faceDetector=null, tickHandle=null;
 let nearCount=0, awayTicks=0, hardStopActive=false, postClearCooldownUntil=0;
 let stream=null;
+let lastZone=null, lastFaceAt=0;
+const FACE_GRACE_MS=1200;
 
 function setStatus(mode, text){
   const row=document.getElementById('statusRow');
@@ -168,24 +170,35 @@ function tick(){
   const ctx=canvas.getContext('2d');
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  if(!faceResult.detections.length){
+  let zone;
+  if(faceResult.detections.length){
+    const box=faceResult.detections[0].boundingBox;
+    zone={
+      x: box.originX - box.width*0.15,
+      y: box.originY - box.height*0.75,
+      w: box.width*1.3,
+      h: box.height*1.05
+    };
+    lastZone=zone;
+    lastFaceAt=Date.now();
+  }else if(lastZone && (Date.now()-lastFaceAt)<FACE_GRACE_MS){
+    // A hand moving onto the hair/forehead often occludes the face just
+    // enough to drop face detection for a frame or two -- exactly the
+    // moment we need to keep counting. Coast on the last-known zone for a
+    // short grace window instead of resetting nearCount to 0 here, which
+    // used to make the alert-frame streak nearly impossible to complete.
+    zone=lastZone;
+  }else{
     if(!hardStopActive) setStatus('watching','Watching — no face in frame');
     nearCount=0;
     return;
   }
-  const box=faceResult.detections[0].boundingBox;
-  const zone={
-    x: box.originX - box.width*0.15,
-    y: box.originY - box.height*0.75,
-    w: box.width*1.3,
-    h: box.height*1.05
-  };
   ctx.strokeStyle='rgba(192,132,252,0.9)'; ctx.lineWidth=3;
   ctx.strokeRect(zone.x, zone.y, zone.w, zone.h);
 
   let handInZone=false;
   (handResult.landmarks||[]).forEach(lm=>{
-    [0,4,8].forEach(i=>{
+    [0,4,8,12,16,20].forEach(i=>{
       const pt=lm[i];
       const px=pt.x*canvas.width, py=pt.y*canvas.height;
       const inside = px>=zone.x && px<=zone.x+zone.w && py>=zone.y && py<=zone.y+zone.h;

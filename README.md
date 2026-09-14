@@ -161,6 +161,14 @@ kept anywhere past that single frame.
   application layer. A global shortcut bound in your OS or window manager (a screenshot key, a
   workspace switcher, anything like that) still fires before this app ever sees it — no normal
   application, this one included, can intercept that.
+- The moment a hand actually reaches your hair, it often partially blocks the camera's view of
+  your own face -- exactly when face detection is most likely to drop out for a frame. Earlier
+  versions treated a missing face as "nothing to check" and reset the catch counter on the spot,
+  which meant the one moment that mattered most was the one moment detection was least reliable.
+  It now coasts on the last-known face position for up to 1.2s when the face briefly disappears,
+  instead of throwing that progress away. If you fork this and change the face/hand logic, keep
+  that in mind -- a naive "no face this frame -> ignore this frame" reset will quietly make the
+  whole thing stop catching real pulls.
 
 ## Not a replacement for therapy
 
